@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useLocation } from "wouter";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -9,30 +10,60 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   register: (userData: any) => Promise<User>;
   logout: () => void;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const SESSION_KEY = "invoaiq_user";
+const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const refreshSession = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/auth/verify");
+      const userData = await response.json();
+      setUser(userData);
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    } catch (error) {
+      console.error("Session verification failed", error);
+      setUser(null);
+      sessionStorage.removeItem(SESSION_KEY);
+      setLocation("/login");
+    }
+  };
 
   useEffect(() => {
-    // Check for logged in user in sessionStorage
-    const storedUser = sessionStorage.getItem("invoaiq_user");
-    
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Failed to parse stored user", error);
-        sessionStorage.removeItem("invoaiq_user");
+    const initializeAuth = async () => {
+      const storedUser = sessionStorage.getItem(SESSION_KEY);
+      
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          await refreshSession();
+        } catch (error) {
+          console.error("Failed to parse stored user", error);
+          sessionStorage.removeItem(SESSION_KEY);
+        }
       }
-    }
-    
-    setIsLoading(false);
-  }, []);
+      
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+
+    // Set up periodic session check
+    const intervalId = setInterval(refreshSession, SESSION_CHECK_INTERVAL);
+
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [setLocation]);
 
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
@@ -41,13 +72,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest("POST", "/api/auth/login", { email, password });
       const userData = await response.json();
       
-      // Save to state and session storage
       setUser(userData);
-      sessionStorage.setItem("invoaiq_user", JSON.stringify(userData));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome back to InvoaIQ!",
+      });
       
       return userData;
     } catch (error) {
       console.error("Login failed", error);
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid email or password",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setIsLoading(false);
@@ -61,23 +101,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest("POST", "/api/auth/register", userData);
       const newUser = await response.json();
       
-      // Save to state and session storage
       setUser(newUser);
-      sessionStorage.setItem("invoaiq_user", JSON.stringify(newUser));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
+      
+      toast({
+        title: "Registration successful",
+        description: "Welcome to InvoaIQ!",
+      });
       
       return newUser;
     } catch (error) {
       console.error("Registration failed", error);
+      toast({
+        title: "Registration failed",
+        description: error instanceof Error ? error.message : "Please check your information and try again",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem("invoaiq_user");
-    setLocation("/login");
+  const logout = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUser(null);
+      sessionStorage.removeItem(SESSION_KEY);
+      setLocation("/login");
+    }
   };
 
   const value = {
@@ -85,7 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     register,
-    logout
+    logout,
+    refreshSession
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

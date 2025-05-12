@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import InvoiceForm from "@/components/invoices/InvoiceForm";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "../hooks/use-auth";
+import { useToast } from "../hooks/use-toast";
+import DashboardLayout from "../components/layouts/Dashboard";
+import InvoiceForm from "../components/invoices/InvoiceForm";
+import { Button } from "../ui/button";
 import { ArrowLeft, Edit, Download, Send, Printer } from "lucide-react";
 import { Link } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
-import { formatCurrency, formatDate, getStatusColor } from "@/lib/utils";
-import { downloadInvoicePdf, sendInvoiceEmail } from "@/lib/email";
-import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "../lib/queryClient";
+import { formatCurrency, formatDate, getStatusColor } from "../lib/utils";
+import { downloadInvoicePdf, sendInvoiceEmail } from "../lib/email";
+import { Badge } from "../ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import Avatar from "@/components/ui/Avatar";
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Avatar } from "../ui/avatar";
 
 const InvoiceDetail = () => {
   const { user } = useAuth();
@@ -39,13 +39,13 @@ const InvoiceDetail = () => {
   const invoiceId = params?.id ? parseInt(params.id) : null;
 
   // Fetch invoice details
-  const { data: invoice, isLoading } = useQuery({
+  const { data: invoice, isLoading } = useQuery<Invoice>({
     queryKey: [`/api/invoices/${invoiceId}`],
     enabled: !!invoiceId,
   });
 
   // Fetch client details if invoice is loaded
-  const { data: client } = useQuery({
+  const { data: client } = useQuery<Client>({
     queryKey: [`/api/clients/${invoice?.clientId}`],
     enabled: !!invoice?.clientId,
   });

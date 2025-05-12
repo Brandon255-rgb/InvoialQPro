@@ -135,6 +135,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ message: "Logged out successfully" });
   });
 
+  // Add this after the authentication middleware
+  app.get("/api/auth/verify", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Don't return the password in the response
+      const { password, ...userWithoutPassword } = user;
+      res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Session verification error:", error);
+      res.status(500).json({ message: "Failed to verify session" });
+    }
+  });
+
   // Client routes
   app.get("/api/clients", authenticateUser, async (req: Request, res: Response) => {
     try {

@@ -108,9 +108,9 @@ export class MemStorage implements IStorage {
     this.setupSampleData(1);
   }
 
-  private setupSampleData(userId: number) {
+  private async setupSampleData(userId: number) {
     // Create some clients
-    const client1 = this.createClient({
+    const client1 = await this.createClient({
       userId,
       name: 'Acme Corporation',
       email: 'contact@acme.com',
@@ -120,7 +120,7 @@ export class MemStorage implements IStorage {
       notes: 'Software Development client'
     });
 
-    const client2 = this.createClient({
+    const client2 = await this.createClient({
       userId,
       name: 'Global Solutions',
       email: 'info@globalsolutions.com',
@@ -130,7 +130,7 @@ export class MemStorage implements IStorage {
       notes: 'Consulting Services client'
     });
 
-    const client3 = this.createClient({
+    const client3 = await this.createClient({
       userId,
       name: 'TechCorp Inc.',
       email: 'support@techcorp.com',
@@ -141,7 +141,7 @@ export class MemStorage implements IStorage {
     });
 
     // Create some items
-    this.createItem({
+    await this.createItem({
       userId,
       name: 'Web Design',
       description: 'Professional web design services',
@@ -150,7 +150,7 @@ export class MemStorage implements IStorage {
       isInventory: false
     });
 
-    this.createItem({
+    await this.createItem({
       userId,
       name: 'App Development',
       description: 'Mobile application development',
@@ -159,7 +159,7 @@ export class MemStorage implements IStorage {
       isInventory: false
     });
 
-    this.createItem({
+    await this.createItem({
       userId,
       name: 'SEO Package',
       description: 'Search engine optimization services',
@@ -168,7 +168,7 @@ export class MemStorage implements IStorage {
       isInventory: false
     });
 
-    this.createItem({
+    await this.createItem({
       userId,
       name: 'Server Hardware',
       description: 'Dell PowerEdge R740 Server',
@@ -179,7 +179,7 @@ export class MemStorage implements IStorage {
     });
 
     // Create some invoices
-    const invoice1 = this.createInvoice({
+    const invoice1 = await this.createInvoice({
       userId,
       clientId: client1.id,
       invoiceNumber: 'INV-2024',
@@ -193,36 +193,36 @@ export class MemStorage implements IStorage {
       notes: 'Thank you for your business'
     });
 
-    const invoice2 = this.createInvoice({
+    const invoice2 = await this.createInvoice({
       userId,
       clientId: client2.id,
       invoiceNumber: 'INV-2023',
-      status: 'pending',
-      issueDate: new Date('2023-07-10'),
-      dueDate: new Date('2023-07-24'),
-      subtotal: 1800,
+      status: 'sent',
+      issueDate: new Date('2023-08-01'),
+      dueDate: new Date('2023-08-15'),
+      subtotal: 3000,
       tax: 0,
       discount: 0,
-      total: 1800,
-      notes: 'Net 14 payment terms'
+      total: 3000,
+      notes: 'Please process payment within 15 days'
     });
 
-    const invoice3 = this.createInvoice({
+    const invoice3 = await this.createInvoice({
       userId,
       clientId: client3.id,
       invoiceNumber: 'INV-2022',
-      status: 'overdue',
-      issueDate: new Date('2023-06-15'),
-      dueDate: new Date('2023-06-29'),
-      subtotal: 3200,
+      status: 'draft',
+      issueDate: new Date('2023-09-01'),
+      dueDate: new Date('2023-09-15'),
+      subtotal: 800,
       tax: 0,
       discount: 0,
-      total: 3200,
-      notes: 'Please pay upon receipt'
+      total: 800,
+      notes: 'Draft invoice for SEO services'
     });
 
     // Add invoice items
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice1.id,
       itemId: 1,
       description: 'Web Design Services',
@@ -231,7 +231,7 @@ export class MemStorage implements IStorage {
       total: 1500
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice1.id,
       itemId: 3,
       description: 'SEO Package',
@@ -240,16 +240,16 @@ export class MemStorage implements IStorage {
       total: 800
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice1.id,
       itemId: 4,
       description: 'Server Hardware',
       quantity: 1,
-      price: 200,
-      total: 200
+      price: 2500,
+      total: 2500
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice2.id,
       itemId: 3,
       description: 'SEO Package',
@@ -258,16 +258,16 @@ export class MemStorage implements IStorage {
       total: 800
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice2.id,
       itemId: 1,
       description: 'Web Design',
       quantity: 1,
-      price: 1000,
-      total: 1000
+      price: 1500,
+      total: 1500
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice3.id,
       itemId: 2,
       description: 'App Development',
@@ -276,41 +276,72 @@ export class MemStorage implements IStorage {
       total: 3000
     });
 
-    this.createInvoiceItem({
+    await this.createInvoiceItem({
       invoiceId: invoice3.id,
       itemId: 3,
       description: 'SEO Package',
-      quantity: 0.25,
+      quantity: 1,
       price: 800,
-      total: 200
+      total: 800
     });
 
-    // Create reminders
-    this.createReminder({
+    // Add reminders
+    await this.createReminder({
       userId,
       invoiceId: invoice2.id,
       title: 'Invoice #2023 reminder',
       description: 'Send payment reminder to Global Solutions',
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+      dueDate: new Date('2023-08-20'),
       isCompleted: false
     });
 
-    this.createReminder({
+    await this.createReminder({
       userId,
       invoiceId: invoice3.id,
       title: 'Follow up on overdue invoice',
       description: 'Call TechCorp regarding Invoice #2022',
-      dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000), // Today
+      dueDate: new Date('2023-09-20'),
       isCompleted: false
     });
+  }
 
-    this.createReminder({
-      userId,
-      title: 'Generate monthly invoices',
-      description: 'Create recurring invoices for subscription clients',
-      dueDate: new Date('2023-08-01'),
-      isCompleted: false
-    });
+  private validateUser(user: InsertUser): void {
+    if (!user.email || !user.password || !user.name) {
+      throw new Error("Missing required user fields");
+    }
+    if (user.password.length < 8) {
+      throw new Error("Password must be at least 8 characters long");
+    }
+  }
+
+  private validateClient(client: InsertClient): void {
+    if (!client.name || !client.email) {
+      throw new Error("Missing required client fields");
+    }
+  }
+
+  private validateItem(item: InsertItem): void {
+    if (!item.name || item.price === undefined) {
+      throw new Error("Missing required item fields");
+    }
+    if (item.price < 0) {
+      throw new Error("Price cannot be negative");
+    }
+  }
+
+  private async validateInvoice(invoice: InsertInvoice): Promise<void> {
+    if (!invoice.clientId || !invoice.invoiceNumber || !invoice.issueDate || !invoice.dueDate) {
+      throw new Error("Missing required invoice fields");
+    }
+    if (invoice.total < 0) {
+      throw new Error("Total cannot be negative");
+    }
+    
+    // Verify client exists
+    const client = await this.getClient(invoice.clientId);
+    if (!client) {
+      throw new Error("Client not found");
+    }
   }
 
   // User operations
@@ -323,11 +354,34 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    // bcrypt will be used in the routes layer for password hashing
-    const newUser: User = { ...user, id, createdAt: new Date() };
-    this.users.set(id, newUser);
-    return newUser;
+    try {
+      this.validateUser(user);
+      
+      // Check if email already exists
+      const existingUser = await this.getUserByEmail(user.email);
+      if (existingUser) {
+        throw new Error("Email already in use");
+      }
+      
+      const newUser: User = {
+        id: this.userIdCounter++,
+        email: user.email,
+        password: user.password,
+        name: user.name,
+        role: user.role || 'user',
+        status: user.status || 'active',
+        company: user.company || null,
+        phone: user.phone || null,
+        address: user.address || null,
+        createdAt: new Date(),
+      };
+      
+      this.users.set(newUser.id, newUser);
+      return newUser;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
@@ -349,10 +403,27 @@ export class MemStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    const id = this.clientIdCounter++;
-    const newClient: Client = { ...client, id, createdAt: new Date() };
-    this.clients.set(id, newClient);
-    return newClient;
+    try {
+      this.validateClient(client);
+      
+      const newClient: Client = {
+        id: this.clientIdCounter++,
+        userId: client.userId,
+        name: client.name,
+        email: client.email,
+        company: client.company || null,
+        phone: client.phone || null,
+        address: client.address || null,
+        notes: client.notes || null,
+        createdAt: new Date(),
+      };
+      
+      this.clients.set(newClient.id, newClient);
+      return newClient;
+    } catch (error) {
+      console.error("Error creating client:", error);
+      throw error;
+    }
   }
 
   async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
@@ -378,10 +449,27 @@ export class MemStorage implements IStorage {
   }
 
   async createItem(item: InsertItem): Promise<Item> {
-    const id = this.itemIdCounter++;
-    const newItem: Item = { ...item, id, createdAt: new Date() };
-    this.items.set(id, newItem);
-    return newItem;
+    try {
+      this.validateItem(item);
+      
+      const newItem: Item = {
+        id: this.itemIdCounter++,
+        userId: item.userId,
+        name: item.name,
+        description: item.description || null,
+        price: item.price,
+        category: item.category || null,
+        isInventory: item.isInventory || false,
+        stockQuantity: item.stockQuantity || null,
+        createdAt: new Date(),
+      };
+      
+      this.items.set(newItem.id, newItem);
+      return newItem;
+    } catch (error) {
+      console.error("Error creating item:", error);
+      throw error;
+    }
   }
 
   async updateItem(id: number, itemData: Partial<Item>): Promise<Item | undefined> {
@@ -415,10 +503,34 @@ export class MemStorage implements IStorage {
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
-    const id = this.invoiceIdCounter++;
-    const newInvoice: Invoice = { ...invoice, id, createdAt: new Date() };
-    this.invoices.set(id, newInvoice);
-    return newInvoice;
+    try {
+      await this.validateInvoice(invoice);
+      
+      const newInvoice: Invoice = {
+        id: this.invoiceIdCounter++,
+        userId: invoice.userId,
+        clientId: invoice.clientId,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status || 'draft',
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        subtotal: invoice.subtotal,
+        tax: invoice.tax || 0,
+        discount: invoice.discount || 0,
+        total: invoice.total,
+        notes: invoice.notes || null,
+        isRecurring: invoice.isRecurring || false,
+        frequency: invoice.frequency || null,
+        nextInvoiceDate: invoice.nextInvoiceDate || null,
+        createdAt: new Date(),
+      };
+      
+      this.invoices.set(newInvoice.id, newInvoice);
+      return newInvoice;
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      throw error;
+    }
   }
 
   async updateInvoice(id: number, invoiceData: Partial<Invoice>): Promise<Invoice | undefined> {
@@ -456,10 +568,23 @@ export class MemStorage implements IStorage {
   }
 
   async createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem> {
-    const id = this.invoiceItemIdCounter++;
-    const newInvoiceItem: InvoiceItem = { ...invoiceItem, id };
-    this.invoiceItems.set(id, newInvoiceItem);
-    return newInvoiceItem;
+    try {
+      const newInvoiceItem: InvoiceItem = {
+        id: this.invoiceItemIdCounter++,
+        invoiceId: invoiceItem.invoiceId,
+        itemId: invoiceItem.itemId || null,
+        description: invoiceItem.description,
+        quantity: invoiceItem.quantity,
+        price: invoiceItem.price,
+        total: invoiceItem.total,
+      };
+      
+      this.invoiceItems.set(newInvoiceItem.id, newInvoiceItem);
+      return newInvoiceItem;
+    } catch (error) {
+      console.error("Error creating invoice item:", error);
+      throw error;
+    }
   }
 
   async updateInvoiceItem(id: number, itemData: Partial<InvoiceItem>): Promise<InvoiceItem | undefined> {
@@ -489,10 +614,24 @@ export class MemStorage implements IStorage {
   }
 
   async createReminder(reminder: InsertReminder): Promise<Reminder> {
-    const id = this.reminderIdCounter++;
-    const newReminder: Reminder = { ...reminder, id, createdAt: new Date() };
-    this.reminders.set(id, newReminder);
-    return newReminder;
+    try {
+      const newReminder: Reminder = {
+        id: this.reminderIdCounter++,
+        userId: reminder.userId,
+        invoiceId: reminder.invoiceId || null,
+        title: reminder.title,
+        description: reminder.description || null,
+        dueDate: reminder.dueDate,
+        isCompleted: reminder.isCompleted || false,
+        createdAt: new Date(),
+      };
+      
+      this.reminders.set(newReminder.id, newReminder);
+      return newReminder;
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      throw error;
+    }
   }
 
   async updateReminder(id: number, reminderData: Partial<Reminder>): Promise<Reminder | undefined> {

@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
+import { Button } from "components/ui/button";
+import { Input } from "components/ui/input";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+} from "components/ui/dropdown-menu";
 import { Link } from "wouter";
-import { formatCurrency, formatDate, getStatusColor } from "@/lib/utils";
+import { formatCurrency, formatDate, getStatusColor } from "lib/utils";
 import { 
   Search, 
   Plus, 
@@ -20,7 +20,7 @@ import {
   Copy, 
   Trash2 
 } from "lucide-react";
-import Avatar from "@/components/ui/Avatar";
+import { Avatar } from "components/ui/avatar";
 
 interface InvoiceClient {
   id: number;
@@ -55,7 +55,7 @@ const InvoicesList: React.FC<InvoicesListProps> = ({
   onDeleteInvoice,
   onDuplicateInvoice
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   
   // Filter invoices based on search query
   const filteredInvoices = invoices.filter(invoice => {
@@ -102,7 +102,7 @@ const InvoicesList: React.FC<InvoicesListProps> = ({
             className="pl-10"
             placeholder="Search invoices..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex flex-col items-center justify-center py-12">

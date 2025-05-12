@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+} from "../ui/dropdown-menu";
 import { Link } from "wouter";
 import { 
   Search, 
@@ -18,7 +18,7 @@ import {
   Trash2, 
   Edit
 } from "lucide-react";
-import Avatar from "@/components/ui/Avatar";
+import { Avatar } from "../ui/avatar";
 
 interface Client {
   id: number;
@@ -86,8 +86,8 @@ const ClientsList: React.FC<ClientsListProps> = ({
           <Input
             className="pl-10"
             placeholder="Search clients..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchQuery}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex flex-col items-center justify-center py-12">

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../dashboard/Sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation, useRoute } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu, X, Search, Bell, HelpCircle } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,9 +20,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { user, isLoading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Handle scroll events for header shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Handle escape key for mobile menu
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isMobileMenuOpen]);
 
   // Use React's useEffect to handle navigation after render instead of during render
-  // Important: Hooks should be called in the same order on every render
   React.useEffect(() => {
     if (!user && !isLoading) {
       setLocation("/login");
@@ -82,15 +104,22 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navigation */}
-        <header className="bg-white border-b border-gray-200 shadow-sm">
+        <header className={`bg-white border-b border-gray-200 transition-shadow duration-200 ${
+          isScrolled ? "shadow-sm" : ""
+        }`}>
           <div className="flex justify-between items-center py-4 px-4 md:px-6">
             {/* Mobile Logo and Menu */}
             <div className="flex md:hidden items-center">
               <button 
-                className="text-gray-500 hover:text-gray-700 mr-2"
+                className="text-gray-500 hover:text-gray-700 mr-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 onClick={toggleMobileMenu}
+                aria-label="Toggle menu"
               >
-                <i className="fas fa-bars"></i>
+                {isMobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
               <h1 className="font-montserrat font-bold text-xl text-primary-600">
                 <span className="text-accent-600">Invoa</span>IQ
@@ -101,11 +130,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="hidden md:flex items-center flex-1 max-w-lg mx-auto">
               <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <i className="fas fa-search text-gray-400"></i>
+                  <Search className="h-4 w-4 text-gray-400" />
                 </div>
                 <input 
                   type="text" 
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm" 
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors" 
                   placeholder="Search invoices, clients or items..." 
                 />
               </div>
@@ -113,16 +142,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             
             {/* Right Navigation Items */}
             <div className="flex items-center space-x-4">
-              <button className="text-gray-500 hover:text-gray-700 relative">
-                <i className="fas fa-bell"></i>
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-danger"></span>
+              <button className="text-gray-500 hover:text-gray-700 relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-danger"></span>
               </button>
-              <button className="text-gray-500 hover:text-gray-700">
-                <i className="fas fa-question-circle"></i>
+              <button className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <HelpCircle className="h-5 w-5" />
               </button>
               <div className="hidden md:block border-l border-gray-300 h-6 mx-2"></div>
               <div className="hidden md:flex items-center">
-                <button className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900">
+                <button className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-800">
                     {user.name.charAt(0)}
                   </div>
@@ -150,7 +179,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
 
           {/* Page Content */}
-          {children}
+          <div className="transition-opacity duration-200">
+            {children}
+          </div>
         </main>
       </div>
     </div>

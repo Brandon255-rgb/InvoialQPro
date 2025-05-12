@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import ClientForm from "@/components/clients/ClientForm";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "../../hooks/use-auth";
+import { useToast } from "../../hooks/use-toast";
+import DashboardLayout from "../../components/layouts/Dashboard";
+import ClientForm from "../../components/clients/ClientForm";
+import { Button } from "../../components/ui/button";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { Link } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
-import { formatDate } from "@/lib/utils";
-import Avatar from "@/components/ui/Avatar";
+import { apiRequest } from "../../lib/queryClient";
+import { formatDate } from "../../lib/utils";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +20,30 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "../../components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+
+interface Client {
+  id: number;
+  name: string;
+  company?: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+interface Invoice {
+  id: number;
+  clientId: number;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  total: number;
+  status: string;
+}
 
 const ClientDetail = () => {
   const { user } = useAuth();
@@ -37,19 +58,19 @@ const ClientDetail = () => {
   const clientId = params?.id ? parseInt(params.id) : null;
 
   // Fetch client details
-  const { data: client, isLoading: isClientLoading } = useQuery({
+  const { data: client, isLoading: isClientLoading } = useQuery<Client>({
     queryKey: [`/api/clients/${clientId}`],
     enabled: !!clientId,
   });
 
   // Fetch client's invoices
-  const { data: invoices = [], isLoading: isInvoicesLoading } = useQuery({
+  const { data: invoices = [], isLoading: isInvoicesLoading } = useQuery<Invoice[]>({
     queryKey: [`/api/invoices?userId=${userId}`],
     enabled: !!userId,
   });
 
   // Filter invoices for this client
-  const clientInvoices = invoices.filter((invoice: any) => invoice.clientId === clientId);
+  const clientInvoices = invoices.filter((invoice: Invoice) => invoice.clientId === clientId);
 
   // Update client mutation
   const updateMutation = useMutation({
@@ -112,10 +133,10 @@ const ClientDetail = () => {
   // Calculate client stats
   const calculateStats = () => {
     const totalInvoices = clientInvoices.length;
-    const totalRevenue = clientInvoices.reduce((sum: number, invoice: any) => sum + invoice.total, 0);
-    const paidInvoices = clientInvoices.filter((invoice: any) => invoice.status === 'paid').length;
-    const pendingInvoices = clientInvoices.filter((invoice: any) => invoice.status === 'sent').length;
-    const overdueInvoices = clientInvoices.filter((invoice: any) => invoice.status === 'overdue').length;
+    const totalRevenue = clientInvoices.reduce((sum: number, invoice: Invoice) => sum + invoice.total, 0);
+    const paidInvoices = clientInvoices.filter((invoice: Invoice) => invoice.status === 'paid').length;
+    const pendingInvoices = clientInvoices.filter((invoice: Invoice) => invoice.status === 'sent').length;
+    const overdueInvoices = clientInvoices.filter((invoice: Invoice) => invoice.status === 'overdue').length;
     
     return {
       totalInvoices,
@@ -215,7 +236,11 @@ const ClientDetail = () => {
             <div className="p-6">
               <div className="flex flex-col md:flex-row md:items-center">
                 <div className="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
-                  <Avatar name={client.name} size="xl" />
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>
+                      {client.name ? client.name.charAt(0).toUpperCase() : ""}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
                 
                 <div className="flex-1">
@@ -349,7 +374,7 @@ const ClientDetail = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {clientInvoices.map((invoice: any) => (
+                      {clientInvoices.map((invoice: Invoice) => (
                         <tr key={invoice.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-primary-600">
