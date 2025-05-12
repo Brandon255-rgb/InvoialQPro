@@ -52,8 +52,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     );
   }
 
+  // Use React's useEffect to handle navigation after render instead of during render
+  React.useEffect(() => {
+    if (!user && !isLoading) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, setLocation]);
+
   if (!user) {
-    setLocation("/login");
     return null;
   }
 

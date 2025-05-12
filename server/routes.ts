@@ -369,27 +369,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoice routes
-  app.get("/api/invoices", async (req: Request, res: Response) => {
+  app.get("/api/invoices", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Valid userId is required" });
-      }
+      const user = (req as any).user;
+      const invoices = await storage.getInvoicesByUserId(user.id);
       
-      const invoices = await storage.getInvoicesByUserId(userId);
       res.status(200).json(invoices);
     } catch (error) {
+      console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
-  app.get("/api/invoices/:id", async (req: Request, res: Response) => {
+  app.get("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
+      const user = (req as any).user;
       const invoice = await storage.getInvoice(id);
       
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Security check: Only allow users to access their own invoices
+      if (invoice.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to view this invoice" });
       }
       
       // Get invoice items as well
@@ -400,16 +404,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: invoiceItems
       });
     } catch (error) {
+      console.error("Error fetching invoice:", error);
       res.status(500).json({ message: "Failed to fetch invoice" });
     }
   });
 
-  app.post("/api/invoices", async (req: Request, res: Response) => {
+  app.post("/api/invoices", authenticateUser, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
       const { invoice, items } = req.body;
       
-      // Validate invoice data
-      const invoiceData = insertInvoiceSchema.parse(invoice);
+      // For security, enforce that the user ID in the invoice matches the authenticated user
+      const invoiceData = insertInvoiceSchema.parse({
+        ...invoice,
+        userId: user.id // Ensure the invoice belongs to the authenticated user
+      });
+      
+      // Verify the client belongs to the user
+      const client = await storage.getClient(invoiceData.clientId);
+      if (!client) {
+        return res.status(400).json({ message: "Client not found" });
+      }
+      
+      if (client.userId !== user.id) {
+        return res.status(403).json({ 
+          message: "Access denied: You can only create invoices for your own clients"
+        });
+      }
       
       // Create invoice
       const createdInvoice = await storage.createInvoice(invoiceData);
@@ -417,6 +438,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create invoice items
       const createdItems = [];
       for (const item of items) {
+        // If the item has an itemId, verify it belongs to the user
+        if (item.itemId) {
+          const itemObj = await storage.getItem(item.itemId);
+          if (itemObj && itemObj.userId !== user.id) {
+            return res.status(403).json({ 
+              message: "Access denied: You can only use your own items in invoices"
+            });
+          }
+        }
+        
         const invoiceItemData = {
           ...item,
           invoiceId: createdInvoice.id
@@ -432,23 +463,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        });
       }
+      console.error("Error creating invoice:", error);
       res.status(500).json({ message: "Failed to create invoice" });
     }
   });
 
-  app.put("/api/invoices/:id", async (req: Request, res: Response) => {
+  app.put("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
+      const user = (req as any).user;
       const { invoice, items } = req.body;
       
-      // Update invoice
-      const updatedInvoice = await storage.updateInvoice(id, invoice);
-      
-      if (!updatedInvoice) {
+      // Get the existing invoice
+      const existingInvoice = await storage.getInvoice(id);
+      if (!existingInvoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
+      
+      // Security check: Only allow users to update their own invoices
+      if (existingInvoice.userId !== user.id) {
+        return res.status(403).json({ 
+          message: "Access denied: You do not have permission to update this invoice"
+        });
+      }
+      
+      // Prevent changing userId
+      const invoiceUpdates = { ...invoice };
+      delete invoiceUpdates.userId;
+      
+      // If clientId is being updated, verify it belongs to the user
+      if (invoiceUpdates.clientId && invoiceUpdates.clientId !== existingInvoice.clientId) {
+        const client = await storage.getClient(invoiceUpdates.clientId);
+        if (!client) {
+          return res.status(400).json({ message: "Client not found" });
+        }
+        
+        if (client.userId !== user.id) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only use your own clients in invoices"
+          });
+        }
+      }
+      
+      // Update invoice
+      const updatedInvoice = await storage.updateInvoice(id, invoiceUpdates);
       
       // Handle invoice items
       if (items && Array.isArray(items)) {
