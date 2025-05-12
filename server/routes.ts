@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema, InvoiceItem } from "@shared/schema";
 import { generateInvoicePdf } from "./services/pdf";
 import { sendInvoiceEmail } from "./services/email";
 import bcrypt from "bcrypt";
@@ -306,34 +306,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/items/:id", async (req: Request, res: Response) => {
+  app.put("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const itemData = req.body;
+      const user = (req as any).user;
+      const item = await storage.getItem(id);
       
-      const updatedItem = await storage.updateItem(id, itemData);
-      
-      if (!updatedItem) {
+      if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
       
+      // Security check: Only allow users to update their own items
+      if (item.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to update this item" });
+      }
+      
+      const updates = req.body;
+      // Prevent changing userId to maintain data integrity
+      delete updates.userId;
+      
+      const updatedItem = await storage.updateItem(id, updates);
       res.status(200).json(updatedItem);
     } catch (error) {
+      console.error("Error updating item:", error);
       res.status(500).json({ message: "Failed to update item" });
     }
   });
 
-  app.delete("/api/items/:id", async (req: Request, res: Response) => {
+  app.delete("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const success = await storage.deleteItem(id);
+      const user = (req as any).user;
+      const item = await storage.getItem(id);
       
-      if (!success) {
+      if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
       
+      // Security check: Only allow users to delete their own items
+      if (item.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to delete this item" });
+      }
+      
+      // Check if this item is used in any invoices before deletion
+      const invoices = await storage.getInvoices();
+      const invoiceItems = await storage.getInvoiceItems();
+      
+      const isItemInUse = invoiceItems.some((invoiceItem: InvoiceItem) => invoiceItem.itemId === id);
+      
+      if (isItemInUse) {
+        return res.status(409).json({ 
+          message: "Cannot delete item that is used in existing invoices",
+        });
+      }
+      
+      const success = await storage.deleteItem(id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting item:", error);
       res.status(500).json({ message: "Failed to delete item" });
     }
   });

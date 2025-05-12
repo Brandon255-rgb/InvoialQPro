@@ -31,6 +31,7 @@ export interface IStorage {
   
   // Invoice operations
   getInvoice(id: number): Promise<Invoice | undefined>;
+  getInvoices(): Promise<Invoice[]>;
   getInvoicesByUserId(userId: number): Promise<Invoice[]>;
   getInvoicesByClientId(clientId: number): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
@@ -39,6 +40,7 @@ export interface IStorage {
   
   // Invoice items operations
   getInvoiceItem(id: number): Promise<InvoiceItem | undefined>;
+  getInvoiceItems(): Promise<InvoiceItem[]>;
   getInvoiceItemsByInvoiceId(invoiceId: number): Promise<InvoiceItem[]>;
   createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem>;
   updateInvoiceItem(id: number, invoiceItem: Partial<InvoiceItem>): Promise<InvoiceItem | undefined>;
@@ -399,6 +401,10 @@ export class MemStorage implements IStorage {
   async getInvoice(id: number): Promise<Invoice | undefined> {
     return this.invoices.get(id);
   }
+  
+  async getInvoices(): Promise<Invoice[]> {
+    return Array.from(this.invoices.values());
+  }
 
   async getInvoicesByUserId(userId: number): Promise<Invoice[]> {
     return Array.from(this.invoices.values()).filter(invoice => invoice.userId === userId);
@@ -439,6 +445,10 @@ export class MemStorage implements IStorage {
   // Invoice items operations
   async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
     return this.invoiceItems.get(id);
+  }
+  
+  async getInvoiceItems(): Promise<InvoiceItem[]> {
+    return Array.from(this.invoiceItems.values());
   }
 
   async getInvoiceItemsByInvoiceId(invoiceId: number): Promise<InvoiceItem[]> {
