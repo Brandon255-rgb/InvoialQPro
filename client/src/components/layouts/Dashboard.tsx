@@ -21,6 +21,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Use React's useEffect to handle navigation after render instead of during render
+  // Important: Hooks should be called in the same order on every render
+  React.useEffect(() => {
+    if (!user && !isLoading) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, setLocation]);
+
   // Get current route for active menu highlighting
   const [isRootRoute] = useRoute("/");
   const [isDashboardRoute] = useRoute("/dashboard");
@@ -51,13 +59,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
     );
   }
-
-  // Use React's useEffect to handle navigation after render instead of during render
-  React.useEffect(() => {
-    if (!user && !isLoading) {
-      setLocation("/login");
-    }
-  }, [user, isLoading, setLocation]);
 
   if (!user) {
     return null;

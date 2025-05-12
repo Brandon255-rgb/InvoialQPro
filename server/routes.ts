@@ -556,29 +556,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/invoices/:id", async (req: Request, res: Response) => {
+  app.delete("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const success = await storage.deleteInvoice(id);
+      const user = (req as any).user;
       
-      if (!success) {
+      // Get the invoice before deletion to verify ownership
+      const invoice = await storage.getInvoice(id);
+      
+      if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
+      // Security check: Only allow users to delete their own invoices
+      if (invoice.userId !== user.id) {
+        return res.status(403).json({ 
+          message: "Access denied: You do not have permission to delete this invoice"
+        });
+      }
+      
+      // Check if invoice can be deleted (e.g., only if it's in draft status)
+      if (invoice.status === "paid") {
+        return res.status(400).json({ 
+          message: "Cannot delete a paid invoice. Consider canceling it instead."
+        });
+      }
+      
+      const success = await storage.deleteInvoice(id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting invoice:", error);
       res.status(500).json({ message: "Failed to delete invoice" });
     }
   });
 
   // Generate PDF
-  app.get("/api/invoices/:id/pdf", async (req: Request, res: Response) => {
+  app.get("/api/invoices/:id/pdf", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
+      const user = (req as any).user;
       const invoice = await storage.getInvoice(id);
       
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Security check: Only allow users to access their own invoices
+      // We'll make a small exception here to allow viewing PDFs for invoices sent to you as a client
+      // (would be implemented in a real app with client access)
+      if (invoice.userId !== user.id) {
+        // In a real app with client login, we'd check if the current user is the client for this invoice
+        // For now, restrict to only the owner
+        return res.status(403).json({ 
+          message: "Access denied: You do not have permission to view this invoice PDF"
+        });
       }
       
       // Get invoice items
@@ -592,10 +623,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get user (company) information
-      const user = await storage.getUser(invoice.userId);
+      const invoiceUser = await storage.getUser(invoice.userId);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!invoiceUser) {
+        return res.status(404).json({ message: "Company information not found" });
       }
       
       // Generate PDF
