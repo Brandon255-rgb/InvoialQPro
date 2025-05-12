@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
-import { Button } from "components/ui/button";
-import { Input } from "components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from "components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { Link } from "wouter";
-import { formatCurrency, formatDate, getStatusColor } from "lib/utils";
+import { formatCurrency, formatDate, getStatusColor } from "@/lib/utils";
 import { 
   Search, 
   Plus, 
@@ -20,7 +20,7 @@ import {
   Copy, 
   Trash2 
 } from "lucide-react";
-import { Avatar } from "components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface InvoiceClient {
   id: number;
@@ -156,7 +156,16 @@ const InvoicesList: React.FC<InvoicesListProps> = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <Avatar name={invoice.client.name} size="sm" index={invoice.client.id} />
+                      <Avatar>
+                        <AvatarFallback>
+                          {invoice.client.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="ml-2">
                         <div className="font-medium">{invoice.client.name}</div>
                         {invoice.client.company && (

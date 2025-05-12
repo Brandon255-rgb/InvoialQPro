@@ -3,6 +3,8 @@
  * In a production environment, this would be integrated with SendGrid, Mailgun, etc.
  */
 
+import axios from 'axios';
+
 interface EmailOptions {
   recipientEmail: string;
   subject: string;
@@ -14,25 +16,49 @@ interface EmailOptions {
   }>;
 }
 
+const MAILTRAP_API_KEY = process.env.MAILTRAP_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@example.com';
+const MAILTRAP_SEND_URL = 'https://send.api.mailtrap.io/api/send';
+
 /**
- * Sends an email with the given options
- * 
+ * Sends an email with the given options using Mailtrap
+ *
  * @param options The email options including recipient, subject, and HTML content
  * @returns A Promise that resolves when the email is sent
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    console.log("Sending email to:", options.recipientEmail);
-    console.log("Subject:", options.subject);
-    
-    // In a real implementation, this would use SendGrid or another email service
-    // For development purposes, we'll just log the email content
-    console.log("Email sent successfully!");
-    
-    // Always return true for development purposes
+    if (!MAILTRAP_API_KEY) throw new Error('MAILTRAP_API_KEY is not set');
+    const payload: any = {
+      from: {
+        email: EMAIL_FROM,
+        name: 'InvoaIQ',
+      },
+      to: [
+        {
+          email: options.recipientEmail,
+        },
+      ],
+      subject: options.subject,
+      html: options.html,
+    };
+    if (options.attachments && options.attachments.length > 0) {
+      payload.attachments = options.attachments.map(att => ({
+        filename: att.filename,
+        content: att.content.toString('base64'),
+        type: att.contentType,
+        disposition: 'attachment',
+      }));
+    }
+    await axios.post(MAILTRAP_SEND_URL, payload, {
+      headers: {
+        Authorization: `Bearer ${MAILTRAP_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error('Error sending email via Mailtrap:', error);
     return false;
   }
 }
