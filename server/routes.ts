@@ -789,19 +789,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/reminders/:id", async (req: Request, res: Response) => {
+  app.put("/api/reminders/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const reminderData = req.body;
+      const user = (req as any).user;
       
-      const updatedReminder = await storage.updateReminder(id, reminderData);
-      
-      if (!updatedReminder) {
+      // Get existing reminder to check ownership
+      const existingReminder = await storage.getReminder(id);
+      if (!existingReminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
       
+      // Security check: Only allow users to update their own reminders
+      if (existingReminder.userId !== user.id) {
+        return res.status(403).json({ 
+          message: "Access denied: You do not have permission to update this reminder"
+        });
+      }
+      
+      // Prevent changing userId 
+      const reminderUpdates = { ...req.body };
+      delete reminderUpdates.userId;
+      
+      // If invoice ID is being updated, verify it belongs to the user
+      if (reminderUpdates.invoiceId && reminderUpdates.invoiceId !== existingReminder.invoiceId) {
+        const invoice = await storage.getInvoice(reminderUpdates.invoiceId);
+        if (!invoice) {
+          return res.status(400).json({ message: "Invoice not found" });
+        }
+        
+        if (invoice.userId !== user.id) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only link reminders to your own invoices"
+          });
+        }
+      }
+      
+      const updatedReminder = await storage.updateReminder(id, reminderUpdates);
       res.status(200).json(updatedReminder);
     } catch (error) {
+      console.error("Error updating reminder:", error);
       res.status(500).json({ message: "Failed to update reminder" });
     }
   });
