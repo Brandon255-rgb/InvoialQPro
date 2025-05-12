@@ -136,119 +136,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client routes
-  app.get("/api/clients", async (req: Request, res: Response) => {
+  app.get("/api/clients", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Valid userId is required" });
-      }
-      
-      const clients = await storage.getClientsByUserId(userId);
+      const user = (req as any).user;
+      const clients = await storage.getClientsByUserId(user.id);
       res.status(200).json(clients);
     } catch (error) {
+      console.error("Error fetching clients:", error);
       res.status(500).json({ message: "Failed to fetch clients" });
     }
   });
 
-  app.get("/api/clients/:id", async (req: Request, res: Response) => {
+  app.get("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
+      const client = await storage.getClient(id);
+      const user = (req as any).user;
+      
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Security check: Only allow users to access their own clients
+      if (client.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to view this client" });
+      }
+      
+      res.status(200).json(client);
+    } catch (error) {
+      console.error("Error fetching client:", error);
+      res.status(500).json({ message: "Failed to fetch client" });
+    }
+  });
+
+  app.post("/api/clients", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const clientData = insertClientSchema.parse({
+        ...req.body,
+        userId: user.id // Ensure client is created under the authenticated user
+      });
+      
+      const client = await storage.createClient(clientData);
+      res.status(201).json(client);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        });
+      }
+      console.error("Error creating client:", error);
+      res.status(500).json({ message: "Failed to create client" });
+    }
+  });
+
+  app.put("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = getIdParam(req);
+      const user = (req as any).user;
       const client = await storage.getClient(id);
       
       if (!client) {
         return res.status(404).json({ message: "Client not found" });
       }
       
-      res.status(200).json(client);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch client" });
-    }
-  });
-
-  app.post("/api/clients", async (req: Request, res: Response) => {
-    try {
-      const clientData = insertClientSchema.parse(req.body);
-      const client = await storage.createClient(clientData);
-      res.status(201).json(client);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create client" });
-    }
-  });
-
-  app.put("/api/clients/:id", async (req: Request, res: Response) => {
-    try {
-      const id = getIdParam(req);
-      const clientData = req.body;
-      
-      const updatedClient = await storage.updateClient(id, clientData);
-      
-      if (!updatedClient) {
-        return res.status(404).json({ message: "Client not found" });
+      // Security check: Only allow users to update their own clients
+      if (client.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to update this client" });
       }
       
+      const updates = req.body;
+      // Prevent changing userId to maintain data integrity
+      delete updates.userId;
+      
+      const updatedClient = await storage.updateClient(id, updates);
       res.status(200).json(updatedClient);
     } catch (error) {
+      console.error("Error updating client:", error);
       res.status(500).json({ message: "Failed to update client" });
     }
   });
 
-  app.delete("/api/clients/:id", async (req: Request, res: Response) => {
+  app.delete("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const success = await storage.deleteClient(id);
+      const user = (req as any).user;
+      const client = await storage.getClient(id);
       
-      if (!success) {
+      if (!client) {
         return res.status(404).json({ message: "Client not found" });
       }
       
+      // Security check: Only allow users to delete their own clients
+      if (client.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to delete this client" });
+      }
+      
+      // Check if client has associated invoices before deletion
+      const invoices = await storage.getInvoicesByClientId(id);
+      if (invoices.length > 0) {
+        return res.status(409).json({ 
+          message: "Cannot delete client with active invoices",
+          invoiceCount: invoices.length
+        });
+      }
+      
+      const success = await storage.deleteClient(id);
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting client:", error);
       res.status(500).json({ message: "Failed to delete client" });
     }
   });
 
   // Item routes
-  app.get("/api/items", async (req: Request, res: Response) => {
+  app.get("/api/items", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Valid userId is required" });
-      }
-      
-      const items = await storage.getItemsByUserId(userId);
+      const user = (req as any).user;
+      const items = await storage.getItemsByUserId(user.id);
       res.status(200).json(items);
     } catch (error) {
+      console.error("Error fetching items:", error);
       res.status(500).json({ message: "Failed to fetch items" });
     }
   });
 
-  app.get("/api/items/:id", async (req: Request, res: Response) => {
+  app.get("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
       const item = await storage.getItem(id);
+      const user = (req as any).user;
       
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
       
+      // Security check: Only allow users to access their own items
+      if (item.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied: You do not have permission to view this item" });
+      }
+      
       res.status(200).json(item);
     } catch (error) {
+      console.error("Error fetching item:", error);
       res.status(500).json({ message: "Failed to fetch item" });
     }
   });
 
-  app.post("/api/items", async (req: Request, res: Response) => {
+  app.post("/api/items", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const itemData = insertItemSchema.parse(req.body);
+      const user = (req as any).user;
+      const itemData = insertItemSchema.parse({
+        ...req.body,
+        userId: user.id // Ensure item is created under the authenticated user
+      });
+      
       const item = await storage.createItem(itemData);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        });
       }
+      console.error("Error creating item:", error);
       res.status(500).json({ message: "Failed to create item" });
     }
   });
