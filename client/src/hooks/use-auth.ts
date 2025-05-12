@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return React.createElement(AuthContext.Provider, { value }, children);
 }
 
 export function useAuth() {
