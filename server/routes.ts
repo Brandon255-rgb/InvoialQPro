@@ -736,29 +736,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reminder routes
-  app.get("/api/reminders", async (req: Request, res: Response) => {
+  app.get("/api/reminders", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const userId = Number(req.query.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Valid userId is required" });
-      }
+      const user = (req as any).user;
+      // Instead of accepting any userId, we use the authenticated user's ID
+      // This prevents unauthorized access to another user's reminders
+      const userId = user.id;
       
       const reminders = await storage.getRemindersByUserId(userId);
       res.status(200).json(reminders);
     } catch (error) {
+      console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
     }
   });
 
-  app.post("/api/reminders", async (req: Request, res: Response) => {
+  app.post("/api/reminders", authenticateUser, async (req: Request, res: Response) => {
     try {
-      const reminderData = insertReminderSchema.parse(req.body);
+      const user = (req as any).user;
+      
+      // Enforce that the userId in the reminder matches the authenticated user
+      const reminderData = insertReminderSchema.parse({
+        ...req.body,
+        userId: user.id // Ensure the reminder belongs to the authenticated user
+      });
+      
+      // If the reminder is associated with an invoice, verify invoice ownership
+      if (reminderData.invoiceId) {
+        const invoice = await storage.getInvoice(reminderData.invoiceId);
+        if (!invoice) {
+          return res.status(400).json({ message: "Invoice not found" });
+        }
+        
+        if (invoice.userId !== user.id) {
+          return res.status(403).json({ 
+            message: "Access denied: You can only create reminders for your own invoices"
+          });
+        }
+      }
+      
       const reminder = await storage.createReminder(reminderData);
       res.status(201).json(reminder);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        });
       }
+      console.error("Error creating reminder:", error);
       res.status(500).json({ message: "Failed to create reminder" });
     }
   });

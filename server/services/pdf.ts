@@ -18,6 +18,7 @@ export async function generateInvoicePdf(data: {
     name: string;
     email: string;
     address: string;
+    phone?: string; // Make phone optional
   };
 }): Promise<Buffer> {
   const { invoice, items, client, company } = data;

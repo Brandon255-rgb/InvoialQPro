@@ -58,6 +58,7 @@ export async function sendInvoiceEmail({
   company: {
     name: string;
     email: string;
+    phone?: string; // Make phone optional
   };
 }): Promise<boolean> {
   const subject = `Invoice #${invoice.invoiceNumber} from ${company.name}`;
