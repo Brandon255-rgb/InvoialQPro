@@ -635,9 +635,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: invoiceItems,
         client,
         company: {
-          name: user.company || user.name,
-          email: user.email,
-          address: user.address || ''
+          name: invoiceUser.company || invoiceUser.name,
+          email: invoiceUser.email,
+          address: invoiceUser.address || '',
+          phone: invoiceUser.phone || ''
         }
       });
       
@@ -648,14 +649,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send PDF
       res.send(pdfBuffer);
     } catch (error) {
+      console.error("Error generating PDF:", error);
       res.status(500).json({ message: "Failed to generate PDF" });
     }
   });
 
   // Send invoice via email
-  app.post("/api/invoices/:id/send", async (req: Request, res: Response) => {
+  app.post("/api/invoices/:id/send", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
+      const user = (req as any).user;
       const { recipientEmail } = req.body;
       
       if (!recipientEmail) {
@@ -666,6 +669,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Security check: Only allow users to send their own invoices
+      if (invoice.userId !== user.id) {
+        return res.status(403).json({ 
+          message: "Access denied: You do not have permission to send this invoice"
+        });
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(recipientEmail)) {
+        return res.status(400).json({ message: "Invalid email format" });
       }
       
       // Get invoice items
@@ -679,10 +695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get user (company) information
-      const user = await storage.getUser(invoice.userId);
+      const invoiceUser = await storage.getUser(invoice.userId);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!invoiceUser) {
+        return res.status(404).json({ message: "Company information not found" });
       }
       
       // Generate PDF
@@ -691,9 +707,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: invoiceItems,
         client,
         company: {
-          name: user.company || user.name,
-          email: user.email,
-          address: user.address || ''
+          name: invoiceUser.company || invoiceUser.name,
+          email: invoiceUser.email,
+          address: invoiceUser.address || ''
         }
       });
       
@@ -703,8 +719,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoice,
         pdfBuffer,
         company: {
-          name: user.company || user.name,
-          email: user.email
+          name: invoiceUser.company || invoiceUser.name,
+          email: invoiceUser.email
         }
       });
       
