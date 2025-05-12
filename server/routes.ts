@@ -1,10 +1,40 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema } from "@shared/schema";
 import { generateInvoicePdf } from "./services/pdf";
 import { sendInvoiceEmail } from "./services/email";
+import bcrypt from "bcrypt";
+
+// Constants
+const SALT_ROUNDS = 12; // Industry standard for bcrypt
+const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+// Authentication middleware
+const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // For now, we'll rely on userId coming from query or body parameters
+    // In production, this would use a proper JWT or session-based auth system
+    const userId = req.query.userId || req.body.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
+    const user = await storage.getUser(Number(userId));
+    
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    
+    // Attach user to request for use in route handlers
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Authentication error" });
+  }
+};
 
 // Helper function to parse params
 const getIdParam = (req: Request): number => {
@@ -27,15 +57,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email already in use" });
       }
       
-      const user = await storage.createUser(userData);
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(userData.password, SALT_ROUNDS);
+      
+      // Create user with hashed password
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
       
       // Don't return the password in the response
       const { password, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
+      
+      res.status(201).json({
+        ...userWithoutPassword,
+        token: Date.now() + TOKEN_EXPIRY // Simple token expiry timestamp
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+        });
       }
+      console.error("Registration error:", error);
       res.status(500).json({ message: "Failed to create user" });
     }
   });
@@ -48,18 +93,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
       
+      // Find user by email
       const user = await storage.getUserByEmail(email);
       
-      if (!user || user.password !== password) {
+      if (!user) {
+        // Use generic error message to prevent email enumeration
         return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Compare password with hashed password in database
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Check if user account is active
+      if (user.status !== 'active') {
+        return res.status(403).json({ 
+          message: "Account is not active", 
+          status: user.status 
+        });
       }
       
       // Don't return the password in the response
       const { password: _, ...userWithoutPassword } = user;
-      res.status(200).json(userWithoutPassword);
+      
+      res.status(200).json({
+        ...userWithoutPassword,
+        token: Date.now() + TOKEN_EXPIRY // Simple token expiry timestamp
+      });
     } catch (error) {
+      console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
+  });
+  
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    // In a real implementation with proper sessions or JWT, we would invalidate the token
+    // For this simple implementation, we'll just return success
+    res.status(200).json({ message: "Logged out successfully" });
   });
 
   // Client routes

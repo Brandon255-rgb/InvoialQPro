@@ -322,6 +322,7 @@ export class MemStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
+    // bcrypt will be used in the routes layer for password hashing
     const newUser: User = { ...user, id, createdAt: new Date() };
     this.users.set(id, newUser);
     return newUser;
