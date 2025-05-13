@@ -40,7 +40,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="bg-white px-2 text-gray-500">
-                  {type === "login" ? "New to InvoaIQ?" : "Already have an account?"}
+                  {type === "login" ? "New to invoiaiqpro?" : "Already have an account?"}
                 </span>
               </div>
             </div>

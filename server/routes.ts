@@ -6,6 +6,9 @@ import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSc
 import { generateInvoicePdf } from "./services/pdf";
 import { sendInvoiceEmail } from "./services/email";
 import bcrypt from "bcrypt";
+import { Router } from 'express';
+import jwt from 'jsonwebtoken';
+import paymentRouter from './routes/payment';
 
 // Constants
 const SALT_ROUNDS = 12; // Industry standard for bcrypt
@@ -43,6 +46,50 @@ const getIdParam = (req: Request): number => {
     throw new Error("Invalid ID parameter");
   }
   return id;
+};
+
+const router = Router();
+
+// Validation schemas
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+// Mock database (replace with actual database in production)
+const users: Array<{
+  id: string;
+  email: string;
+  password: string;
+}> = [];
+
+const invoices: Array<{
+  id: string;
+  clientName: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'overdue';
+  date: string;
+}> = [];
+
+// Auth middleware
+const auth = (req: any, res: any, next: any) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -936,6 +983,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment routes
+  app.use('/api/payments', paymentRouter);
+
   const httpServer = createServer(app);
   return httpServer;
 }
+
+export default router;

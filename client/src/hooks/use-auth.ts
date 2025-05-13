@@ -15,7 +15,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_KEY = "invoaiq_user";
+const SESSION_KEY = "invoiaiqpro_user";
 const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast({
         title: "Login successful",
-        description: "Welcome back to InvoaIQ!",
+        description: "Welcome back to invoiaiqpro!",
       });
       
       return userData;
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast({
         title: "Registration successful",
-        description: "Welcome to InvoaIQ!",
+        description: "Welcome to invoiaiqpro!",
       });
       
       return newUser;

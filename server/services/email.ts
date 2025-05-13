@@ -3,129 +3,94 @@
  * In a production environment, this would be integrated with SendGrid, Mailgun, etc.
  */
 
-import axios from 'axios';
+import nodemailer from 'nodemailer';
+import { Invoice, Client } from '@shared/schema';
 
-interface EmailOptions {
-  recipientEmail: string;
-  subject: string;
-  html: string;
-  attachments?: Array<{
-    filename: string;
-    content: Buffer;
-    contentType: string;
-  }>;
-}
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
-const MAILTRAP_API_KEY = process.env.MAILTRAP_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@example.com';
-const MAILTRAP_SEND_URL = 'https://send.api.mailtrap.io/api/send';
-
-/**
- * Sends an email with the given options using Mailtrap
- *
- * @param options The email options including recipient, subject, and HTML content
- * @returns A Promise that resolves when the email is sent
- */
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
-  try {
-    if (!MAILTRAP_API_KEY) throw new Error('MAILTRAP_API_KEY is not set');
-    const payload: any = {
-      from: {
-        email: EMAIL_FROM,
-        name: 'InvoaIQ',
-      },
-      to: [
-        {
-          email: options.recipientEmail,
-        },
-      ],
-      subject: options.subject,
-      html: options.html,
-    };
-    if (options.attachments && options.attachments.length > 0) {
-      payload.attachments = options.attachments.map(att => ({
-        filename: att.filename,
-        content: att.content.toString('base64'),
-        type: att.contentType,
-        disposition: 'attachment',
-      }));
-    }
-    await axios.post(MAILTRAP_SEND_URL, payload, {
-      headers: {
-        Authorization: `Bearer ${MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    return true;
-  } catch (error) {
-    console.error('Error sending email via Mailtrap:', error);
-    return false;
-  }
-}
-
-/**
- * Sends an invoice email
- * 
- * @param recipientEmail The email address to send the invoice to
- * @param invoice The invoice object
- * @param pdfBuffer The invoice PDF as a buffer
- * @param company The company information
- * @returns A Promise that resolves when the email is sent
- */
-export async function sendInvoiceEmail({
-  recipientEmail,
-  invoice,
-  pdfBuffer,
-  company,
-}: {
-  recipientEmail: string;
-  invoice: any;
-  pdfBuffer: Buffer;
-  company: {
-    name: string;
-    email: string;
-    phone?: string; // Make phone optional
-  };
-}): Promise<boolean> {
-  const subject = `Invoice #${invoice.invoiceNumber} from ${company.name}`;
-  
-  // Simple HTML email template
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #3b82f6; color: white; padding: 20px; text-align: center;">
-        <h1 style="margin: 0;">Invoice #${invoice.invoiceNumber}</h1>
+export async function sendInvoiceEmail(invoice: Invoice, client: Client, pdfBuffer: Buffer): Promise<void> {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: client.email,
+    subject: `Invoice #${invoice.invoiceNumber} from ${process.env.COMPANY_NAME}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Invoice #${invoice.invoiceNumber}</h2>
+        <p>Dear ${client.name},</p>
+        <p>Please find attached your invoice #${invoice.invoiceNumber} for ${invoice.total.toFixed(2)}.</p>
+        <p>Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+        <p>You can view and pay this invoice online by clicking the button below:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.CLIENT_PORTAL_URL}/invoices/${invoice.id}" 
+             style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+            View Invoice
+          </a>
+        </div>
+        <p>If you have any questions, please don't hesitate to contact us.</p>
+        <p>Best regards,<br>${process.env.COMPANY_NAME}</p>
       </div>
-      
-      <div style="padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
-        <p>Dear Client,</p>
-        
-        <p>Please find attached your invoice #${invoice.invoiceNumber} for the amount of $${invoice.total.toFixed(2)}.</p>
-        
-        <p>Due date: ${new Date(invoice.dueDate).toLocaleDateString()}</p>
-        
-        <p>If you have any questions regarding this invoice, please contact us at ${company.email}.</p>
-        
-        <p>Thank you for your business!</p>
-        
-        <p>Best regards,<br>${company.name}</p>
-      </div>
-      
-      <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;">
-        <p>This email was sent from InvoaIQ, an online invoicing platform.</p>
-      </div>
-    </div>
-  `;
-  
-  return sendEmail({
-    recipientEmail,
-    subject,
-    html,
+    `,
     attachments: [
       {
         filename: `invoice-${invoice.invoiceNumber}.pdf`,
         content: pdfBuffer,
-        contentType: 'application/pdf',
       },
     ],
-  });
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+export async function sendPaymentReminder(invoice: Invoice, client: Client): Promise<void> {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: client.email,
+    subject: `Payment Reminder: Invoice #${invoice.invoiceNumber}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Payment Reminder</h2>
+        <p>Dear ${client.name},</p>
+        <p>This is a friendly reminder that invoice #${invoice.invoiceNumber} for ${invoice.total.toFixed(2)} is due on ${new Date(invoice.dueDate).toLocaleDateString()}.</p>
+        <p>You can view and pay this invoice online by clicking the button below:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.CLIENT_PORTAL_URL}/invoices/${invoice.id}" 
+             style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+            Pay Now
+          </a>
+        </div>
+        <p>If you have already made this payment, please disregard this reminder.</p>
+        <p>Best regards,<br>${process.env.COMPANY_NAME}</p>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+export async function sendPaymentConfirmation(invoice: Invoice, client: Client): Promise<void> {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: client.email,
+    subject: `Payment Confirmation: Invoice #${invoice.invoiceNumber}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Payment Confirmation</h2>
+        <p>Dear ${client.name},</p>
+        <p>We have received your payment of ${invoice.total.toFixed(2)} for invoice #${invoice.invoiceNumber}.</p>
+        <p>Thank you for your business!</p>
+        <p>Best regards,<br>${process.env.COMPANY_NAME}</p>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
 }

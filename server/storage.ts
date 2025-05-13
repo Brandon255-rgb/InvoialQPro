@@ -96,12 +96,12 @@ export class MemStorage implements IStorage {
 
     // Add a default admin user
     this.createUser({
-      email: 'admin@invoaiq.com',
+      email: 'admin@invoiaiqpro.com',
       password: 'password123',
       name: 'Administrator',
       role: 'admin',
       status: 'active',
-      company: 'InvoaIQ Inc.'
+      company: 'invoiaiqpro Inc.'
     });
 
     // Add some sample data for the admin user

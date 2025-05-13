@@ -48,7 +48,7 @@ const Login = () => {
       
       toast({
         title: "Login successful",
-        description: "Welcome back to InvoaIQ!",
+        description: "Welcome back to invoiaiqpro!",
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -137,7 +137,7 @@ const Login = () => {
               For demonstration purposes, use:
             </span>
             <div className="mt-1 text-gray-600 font-medium">
-              Email: admin@invoaiq.com
+              Email: admin@invoiaiqpro.com
             </div>
             <div className="text-gray-600 font-medium">
               Password: password123

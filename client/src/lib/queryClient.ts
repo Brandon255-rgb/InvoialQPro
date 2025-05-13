@@ -57,7 +57,7 @@ export async function apiRequest(
   } catch (error) {
     if (error instanceof APIError && error.status === 401) {
       // Clear session on unauthorized
-      sessionStorage.removeItem("invoaiq_user");
+      sessionStorage.removeItem("invoiaiqpro_user");
       window.location.href = '/login';
     }
     throw error;
@@ -93,7 +93,7 @@ export const getQueryFn: <T>(options: {
           return null;
         }
         // Clear session on unauthorized
-        sessionStorage.removeItem("invoaiq_user");
+        sessionStorage.removeItem("invoiaiqpro_user");
         window.location.href = '/login';
       }
       throw error;

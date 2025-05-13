@@ -1,4 +1,4 @@
-# InvoaIQ Pro
+# invoiaiqpro
 
 A modern invoicing and analytics platform for small businesses with invoice generation, client management, and financial insights.
 
@@ -11,8 +11,8 @@ A modern invoicing and analytics platform for small businesses with invoice gene
 
 ### 1. Clone the repository
 ```sh
-git clone https://github.com/Brandon255-rgb/InvoialQPro.git
-cd InvoialQPro
+git clone https://github.com/Brandon255-rgb/invoiaiqpro.git
+cd invoiaiqpro
 ```
 
 ### 2. Install dependencies

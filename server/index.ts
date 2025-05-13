@@ -1,72 +1,72 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import dotenv from "dotenv";
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import { createServer as createViteServer } from 'vite';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import router from './routes';
+import { startRecurringInvoiceCron } from './cron/recurring';
 
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+async function createServer() {
+  const app = express();
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+  // API routes
+  app.use('/api', router);
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
+  // Create Vite server in middleware mode
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: 'custom',
+    root: resolve(__dirname, '../client'),
+  });
 
-      log(logLine);
+  // Use vite's connect instance as middleware
+  app.use(vite.middlewares);
+
+  // Serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(resolve(__dirname, '../client/dist')));
+  }
+
+  // Handle all routes for SPA
+  app.use('*', async (req, res) => {
+    const url = req.originalUrl;
+
+    try {
+      // Read index.html
+      const indexHtml = await vite.ssrLoadModule('/index.html');
+      let template = typeof indexHtml === 'string' ? indexHtml : '';
+
+      // Apply Vite HTML transforms
+      template = await vite.transformIndexHtml(url, template);
+
+      // Send the rendered HTML back
+      res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+    } catch (e) {
+      // If an error is caught, let Vite fix the stack trace
+      vite.ssrFixStacktrace(e as Error);
+      console.error(e);
+      res.status(500).end((e as Error).stack);
     }
   });
 
-  next();
+  const port = process.env.PORT || 5001;
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+    
+    // Start recurring invoice cron job
+    startRecurringInvoiceCron();
+    console.log('Recurring invoice cron job started');
+  });
+}
+
+createServer().catch((e) => {
+  console.error('Error starting server:', e);
+  process.exit(1);
 });
-
-(async () => {
-  const server = await registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();

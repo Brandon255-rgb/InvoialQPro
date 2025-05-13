@@ -26,7 +26,7 @@ export default function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200">
       <div className="flex h-16 flex-shrink-0 items-center px-4">
-        <h1 className="text-xl font-semibold text-gray-900">InvoialQPro</h1>
+        <h1 className="text-xl font-semibold text-gray-900">invoiaiqpro</h1>
       </div>
       <div className="flex flex-1 flex-col overflow-y-auto">
         <nav className="flex-1 space-y-1 px-2 py-4">

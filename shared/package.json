@@ -1,0 +1,14 @@
+{
+  "name": "@shared/schema",
+  "version": "1.0.0",
+  "description": "Shared schema definitions for InvoialQPro",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+} 

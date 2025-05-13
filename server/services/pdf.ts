@@ -4,170 +4,83 @@
  * In a production environment, this would be integrated with a proper PDF generator like PDFKit or html-pdf.
  */
 
+import PDFDocument from 'pdfkit';
+import { Invoice, Client, InvoiceItem } from '@shared/schema';
+import fs from 'fs';
+import path from 'path';
+
 /**
  * Generates an invoice PDF
  * 
  * @param data Invoice data including invoice, items, client, and company information
  * @returns A Buffer containing the PDF data
  */
-export async function generateInvoicePdf(data: {
-  invoice: any;
-  items: any[];
-  client: any;
-  company: {
-    name: string;
-    email: string;
-    address: string;
-    phone?: string; // Make phone optional
-  };
-}): Promise<Buffer> {
-  const { invoice, items, client, company } = data;
-  
-  // Create a simple HTML template for the invoice
-  // In a real implementation, this would use a proper PDF generation library
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Invoice #${invoice.invoiceNumber}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-          color: #333;
-        }
-        .invoice-header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 30px;
-        }
-        .company-details {
-          text-align: right;
-        }
-        .invoice-title {
-          font-size: 24px;
-          font-weight: bold;
-          margin-bottom: 5px;
-          color: #3b82f6;
-        }
-        .invoice-details {
-          margin-bottom: 20px;
-        }
-        .client-details {
-          margin-bottom: 20px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 20px;
-        }
-        th {
-          background-color: #f3f4f6;
-          text-align: left;
-          padding: 10px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        td {
-          padding: 10px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .total-row {
-          font-weight: bold;
-          background-color: #f3f4f6;
-        }
-        .notes {
-          margin-top: 30px;
-          padding: 10px;
-          background-color: #f9fafb;
-          border-radius: 4px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="invoice-header">
-        <div>
-          <div class="invoice-title">INVOICE</div>
-          <div>#${invoice.invoiceNumber}</div>
-        </div>
-        <div class="company-details">
-          <div><strong>${company.name}</strong></div>
-          <div>${company.email}</div>
-          <div>${company.address.replace(/\n/g, '<br>')}</div>
-        </div>
-      </div>
+export async function generateInvoicePdf(invoice: Invoice, client: Client, items: InvoiceItem[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
 
-      <div class="invoice-details">
-        <div><strong>Date:</strong> ${new Date(invoice.issueDate).toLocaleDateString()}</div>
-        <div><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</div>
-        <div><strong>Status:</strong> ${invoice.status.toUpperCase()}</div>
-      </div>
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-      <div class="client-details">
-        <div><strong>Bill To:</strong></div>
-        <div>${client.name}</div>
-        ${client.company ? `<div>${client.company}</div>` : ''}
-        <div>${client.email}</div>
-        ${client.phone ? `<div>${client.phone}</div>` : ''}
-        ${client.address ? `<div>${client.address.replace(/\n/g, '<br>')}</div>` : ''}
-      </div>
+      // Header
+      doc.fontSize(20).text('INVOICE', { align: 'center' });
+      doc.moveDown();
 
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${items.map(item => `
-            <tr>
-              <td>${item.description}</td>
-              <td>${item.quantity}</td>
-              <td>$${item.price.toFixed(2)}</td>
-              <td>$${item.total.toFixed(2)}</td>
-            </tr>
-          `).join('')}
-          <tr class="total-row">
-            <td colspan="3" style="text-align: right;">Subtotal</td>
-            <td>$${invoice.subtotal.toFixed(2)}</td>
-          </tr>
-          ${invoice.tax > 0 ? `
-            <tr>
-              <td colspan="3" style="text-align: right;">Tax</td>
-              <td>$${invoice.tax.toFixed(2)}</td>
-            </tr>
-          ` : ''}
-          ${invoice.discount > 0 ? `
-            <tr>
-              <td colspan="3" style="text-align: right;">Discount</td>
-              <td>-$${invoice.discount.toFixed(2)}</td>
-            </tr>
-          ` : ''}
-          <tr class="total-row">
-            <td colspan="3" style="text-align: right;">Total</td>
-            <td>$${invoice.total.toFixed(2)}</td>
-          </tr>
-        </tbody>
-      </table>
+      // Invoice Details
+      doc.fontSize(12);
+      doc.text(`Invoice Number: ${invoice.invoiceNumber}`);
+      doc.text(`Date: ${new Date(invoice.issueDate).toLocaleDateString()}`);
+      doc.text(`Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`);
+      doc.moveDown();
 
-      ${invoice.notes ? `
-        <div class="notes">
-          <strong>Notes:</strong>
-          <p>${invoice.notes.replace(/\n/g, '<br>')}</p>
-        </div>
-      ` : ''}
-    </body>
-    </html>
-  `;
+      // Client Details
+      doc.text('Bill To:');
+      doc.text(client.name);
+      if (client.company) doc.text(client.company);
+      doc.text(client.address || '');
+      doc.text(client.email);
+      doc.moveDown();
 
-  // In a real implementation, we would convert the HTML to a PDF here
-  // For now, we'll return the HTML as a buffer
-  // In production, use a library like html-pdf, PDFKit, or Puppeteer
+      // Items Table
+      const tableTop = doc.y;
+      const tableLeft = 50;
+      const tableWidth = 500;
+      const columnWidth = tableWidth / 4;
 
-  const mockPdfBuffer = Buffer.from(html);
-  return mockPdfBuffer;
+      // Table Header
+      doc.text('Description', tableLeft, tableTop);
+      doc.text('Quantity', tableLeft + columnWidth, tableTop);
+      doc.text('Price', tableLeft + columnWidth * 2, tableTop);
+      doc.text('Total', tableLeft + columnWidth * 3, tableTop);
+      doc.moveDown();
+
+      // Table Rows
+      let y = doc.y;
+      items.forEach(item => {
+        doc.text(item.description, tableLeft, y);
+        doc.text(item.quantity.toString(), tableLeft + columnWidth, y);
+        doc.text(`$${item.price.toFixed(2)}`, tableLeft + columnWidth * 2, y);
+        doc.text(`$${item.total.toFixed(2)}`, tableLeft + columnWidth * 3, y);
+        y += 20;
+      });
+
+      // Totals
+      doc.moveDown();
+      doc.text(`Subtotal: $${invoice.subtotal.toFixed(2)}`, { align: 'right' });
+      if (invoice.tax) doc.text(`Tax: $${invoice.tax.toFixed(2)}`, { align: 'right' });
+      if (invoice.discount) doc.text(`Discount: $${invoice.discount.toFixed(2)}`, { align: 'right' });
+      doc.text(`Total: $${invoice.total.toFixed(2)}`, { align: 'right' });
+
+      // Footer
+      doc.fontSize(10);
+      doc.text('Thank you for your business!', { align: 'center' });
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
 }

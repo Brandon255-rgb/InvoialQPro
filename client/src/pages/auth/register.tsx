@@ -58,7 +58,7 @@ const Register = () => {
       
       toast({
         title: "Registration successful",
-        description: "Welcome to InvoaIQ!",
+        description: "Welcome to invoiaiqpro!",
       });
     } catch (error) {
       console.error("Registration error:", error);
