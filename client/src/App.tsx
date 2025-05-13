@@ -1,92 +1,60 @@
-import { Switch, Route } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
-import NotFound from "@/pages/not-found";
-import Dashboard from "@/pages/dashboard";
-import Login from "@/pages/auth/login";
-import Register from "@/pages/auth/register";
-import Invoices from "@/pages/invoices";
-import CreateInvoice from "@/pages/invoices/create";
-import InvoiceDetail from "@/pages/invoices/[id]";
-import Clients from "@/pages/clients";
-import CreateClient from "@/pages/clients/create";
-import ClientDetail from "@/pages/clients/[id]";
-import Items from "@/pages/items";
-import CreateItem from "@/pages/items/create";
-import ItemDetail from "@/pages/items/[id]";
-import Reports from "@/pages/reports";
-import Settings from "@/pages/settings";
-import { AuthProvider } from "@/hooks/use-auth";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import NotFound from './pages/not-found';
+import ProtectedRoute from './components/ProtectedRoute';
+import Reports from './pages/Reports';
+import Settings from './pages/settings';
+import Clients from './pages/clients';
+import ClientCreate from './pages/clients/create';
+import ClientEdit from './pages/clients/[id]';
+import Invoices from './pages/invoices';
+import InvoiceCreate from './pages/invoices/create';
+import InvoiceEdit from './pages/invoices/[id]';
+import Items from './pages/items';
+import ItemCreate from './pages/items/create';
+import ItemEdit from './pages/items/[id]';
 
-function Router() {
+export default function App() {
   return (
-    <Switch>
-      {/* Auth Routes */}
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      
-      {/* App Routes */}
-      <Route path="/" component={Dashboard} />
-      <Route path="/dashboard" component={Dashboard} />
-      
-      {/* Invoice Routes */}
-      <Route path="/invoices" component={Invoices} />
-      <Route path="/invoices/create" component={CreateInvoice} />
-      <Route path="/invoices/:id" component={InvoiceDetail} />
-      
-      {/* Client Routes */}
-      <Route path="/clients" component={Clients} />
-      <Route path="/clients/create" component={CreateClient} />
-      <Route path="/clients/:id" component={ClientDetail} />
-      
-      {/* Item Routes */}
-      <Route path="/items" component={Items} />
-      <Route path="/items/create" component={CreateItem} />
-      <Route path="/items/:id" component={ItemDetail} />
-      
-      {/* Other Routes */}
-      <Route path="/reports" component={Reports} />
-      <Route path="/settings" component={Settings} />
-      
-      {/* Fallback to 404 */}
-      <Route component={NotFound} />
-    </Switch>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="clients">
+              <Route index element={<Clients />} />
+              <Route path="create" element={<ClientCreate />} />
+              <Route path=":id" element={<ClientEdit />} />
+            </Route>
+            <Route path="invoices">
+              <Route index element={<Invoices />} />
+              <Route path="create" element={<InvoiceCreate />} />
+              <Route path=":id" element={<InvoiceEdit />} />
+            </Route>
+            <Route path="items">
+              <Route index element={<Items />} />
+              <Route path="create" element={<ItemCreate />} />
+              <Route path=":id" element={<ItemEdit />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
-
-function App() {
-  useEffect(() => {
-    // Add Font Awesome from CDN
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js';
-    script.async = true;
-    document.body.appendChild(script);
-    
-    // Add Google Fonts
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-    
-    return () => {
-      document.body.removeChild(script);
-      document.head.removeChild(link);
-    };
-  }, []);
-  
-  return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </AuthProvider>
-  );
-}
-
-export default App;

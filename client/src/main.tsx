@@ -1,6 +1,7 @@
-import { createRoot } from "react-dom/client";
-import App from "./App";
-import "./index.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
 
 // Set up document title
 document.title = "InvoaIQ - Smart Invoicing & Analytics Platform";
@@ -12,4 +13,8 @@ metaDescription.content = 'InvoaIQ - A modern invoicing and analytics platform f
 document.head.appendChild(metaDescription);
 
 // Create the root and render the app
-createRoot(document.getElementById("root")!).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
