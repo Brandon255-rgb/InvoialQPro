@@ -76,17 +76,18 @@ const Login = () => {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email address</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Email address</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="johndoe@example.com"
                     type="email"
                     autoComplete="email"
                     required
+                    className="h-11 bg-gray-50 border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-sm" />
               </FormItem>
             )}
           />
@@ -97,10 +98,10 @@ const Login = () => {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
                   <a
                     href="#"
-                    className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                    className="text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors"
                   >
                     Forgot password?
                   </a>
@@ -111,16 +112,21 @@ const Login = () => {
                     type="password"
                     autoComplete="current-password"
                     required
+                    className="h-11 bg-gray-50 border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-sm" />
               </FormItem>
             )}
           />
 
           <div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full h-11 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -132,15 +138,17 @@ const Login = () => {
             </Button>
           </div>
 
-          <div className="text-center text-sm">
+          <div className="bg-gray-50 rounded-lg p-4 text-center text-sm">
             <span className="text-gray-500">
               For demonstration purposes, use:
             </span>
-            <div className="mt-1 text-gray-600 font-medium">
-              Email: admin@invoiaiqpro.com
-            </div>
-            <div className="text-gray-600 font-medium">
-              Password: password123
+            <div className="mt-2 space-y-1">
+              <div className="text-gray-600 font-medium">
+                Email: admin@invoiaiqpro.com
+              </div>
+              <div className="text-gray-600 font-medium">
+                Password: password123
+              </div>
             </div>
           </div>
         </form>
