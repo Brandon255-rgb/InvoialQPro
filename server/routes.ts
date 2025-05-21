@@ -2,13 +2,19 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema, InvoiceItem } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema, InvoiceItem, teamMembers } from "@shared/schema";
 import { generateInvoicePdf } from "./services/pdf";
 import { sendInvoiceEmail } from "./services/email";
 import bcrypt from "bcrypt";
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import paymentRouter from './routes/payment';
+import paymentRouter from './src/routes/payment';
+import { upload, saveFileMetadata, getFileMetadata, deleteFile } from './src/services/upload';
+import { companySettings, attachments } from '@shared/schema';
+import { eq, desc } from 'drizzle-orm';
+import { inviteTeamMember, acceptTeamInvite, getTeamMembers, updateTeamMemberRole, removeTeamMember } from './src/services/team';
+import { auditLogs, invoiceTemplates } from '@shared/schema';
+import { db } from './src/db';
 
 // Constants
 const SALT_ROUNDS = 12; // Industry standard for bcrypt
@@ -90,6 +96,24 @@ const auth = (req: any, res: any, next: any) => {
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });
   }
+};
+
+// Middleware for audit logging
+const auditLog = async (req: Request, res: Response, next: NextFunction) => {
+  // Only log mutating actions
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    const user = (req as any).user;
+    if (user) {
+      await db.insert(auditLogs).values({
+        userId: user.id,
+        action: req.method + ' ' + req.path,
+        entity: req.path.split('/')[2] || '',
+        entityId: req.params.id ? Number(req.params.id) : null,
+        timestamp: new Date(),
+      });
+    }
+  }
+  next();
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -773,20 +797,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         company: {
           name: invoiceUser.company || invoiceUser.name,
           email: invoiceUser.email,
-          address: invoiceUser.address || ''
+          address: invoiceUser.address || '',
+          phone: invoiceUser.phone || ''
         }
       });
       
       // Send email
-      await sendInvoiceEmail({
-        recipientEmail,
-        invoice,
-        pdfBuffer,
-        company: {
-          name: invoiceUser.company || invoiceUser.name,
-          email: invoiceUser.email
-        }
-      });
+      await sendInvoiceEmail(invoice, client, pdfBuffer);
       
       // Update invoice status if it's still in draft
       if (invoice.status === 'draft') {
@@ -985,6 +1002,288 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Payment routes
   app.use('/api/payments', paymentRouter);
+
+  // File upload routes
+  app.post("/api/upload", authenticateUser, upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const attachment = await saveFileMetadata(
+        user.id,
+        file.originalname,
+        file.mimetype,
+        file.size,
+        file.path
+      );
+      
+      res.status(201).json(attachment);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  app.get("/api/files/:id", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = getIdParam(req);
+      const user = (req as any).user;
+      
+      const file = await getFileMetadata(id);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Security check: Only allow users to access their own files
+      if (file.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.status(200).json(file);
+    } catch (error) {
+      console.error("Error getting file:", error);
+      res.status(500).json({ message: "Failed to get file" });
+    }
+  });
+
+  app.delete("/api/files/:id", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = getIdParam(req);
+      const user = (req as any).user;
+      
+      const file = await getFileMetadata(id);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Security check: Only allow users to delete their own files
+      if (file.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      await deleteFile(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      res.status(500).json({ message: "Failed to delete file" });
+    }
+  });
+
+  // Company settings routes
+  app.get("/api/company-settings", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      
+      const [settings] = await db.select().from(companySettings).where(eq(companySettings.userId, user.id));
+      
+      if (!settings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+      
+      res.status(200).json(settings);
+    } catch (error) {
+      console.error("Error getting company settings:", error);
+      res.status(500).json({ message: "Failed to get company settings" });
+    }
+  });
+
+  app.put("/api/company-settings", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const updates = req.body;
+      
+      // Prevent changing userId
+      delete updates.userId;
+      
+      const [settings] = await db.select().from(companySettings).where(eq(companySettings.userId, user.id));
+      
+      if (!settings) {
+        // Create new settings if they don't exist
+        const [newSettings] = await db.insert(companySettings).values({
+          userId: user.id,
+          ...updates
+        }).returning();
+        
+        res.status(201).json(newSettings);
+      } else {
+        // Update existing settings
+        const [updatedSettings] = await db.update(companySettings)
+          .set(updates)
+          .where(eq(companySettings.userId, user.id))
+          .returning();
+        
+        res.status(200).json(updatedSettings);
+      }
+    } catch (error) {
+      console.error("Error updating company settings:", error);
+      res.status(500).json({ message: "Failed to update company settings" });
+    }
+  });
+
+  // Team management routes
+  app.post("/api/team/invite", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { email, role } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const member = await inviteTeamMember(user.id, email, role);
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Error inviting team member:", error);
+      res.status(500).json({ message: "Failed to invite team member" });
+    }
+  });
+
+  app.post("/api/team/accept/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      const member = await acceptTeamInvite(token);
+      res.status(200).json(member);
+    } catch (error) {
+      console.error("Error accepting invite:", error);
+      res.status(500).json({ message: "Failed to accept invite" });
+    }
+  });
+
+  app.get("/api/team/members", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const members = await db.select().from(teamMembers).where(eq(teamMembers.userId, user.id));
+      res.status(200).json(members);
+    } catch (error) {
+      console.error("Error getting team members:", error);
+      res.status(500).json({ message: "Failed to get team members" });
+    }
+  });
+
+  app.put("/api/team/members/:id/role", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = getIdParam(req);
+      const user = (req as any).user;
+      const { role } = req.body;
+      
+      // Only admins can change roles
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can change roles" });
+      }
+      
+      const member = await updateTeamMemberRole(id, role);
+      res.status(200).json(member);
+    } catch (error) {
+      console.error("Error updating team member role:", error);
+      res.status(500).json({ message: "Failed to update team member role" });
+    }
+  });
+
+  app.delete("/api/team/members/:id", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = getIdParam(req);
+      const user = (req as any).user;
+      
+      // Only admins can remove team members
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can remove team members" });
+      }
+      
+      await removeTeamMember(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
+  // Attach auditLog middleware to all mutating routes
+  app.use(auditLog);
+
+  // --- Attachments Linking ---
+  app.post('/api/attachments/link', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { attachmentId, invoiceId, clientId, reminderId } = req.body;
+      if (!attachmentId) return res.status(400).json({ message: 'attachmentId required' });
+      // Update attachment with entity linkage
+      const updates: any = {};
+      if (invoiceId) updates.invoiceId = invoiceId;
+      if (clientId) updates.clientId = clientId;
+      if (reminderId) updates.reminderId = reminderId;
+      const [updated] = await db.update(attachments).set(updates).where(eq(attachments.id, attachmentId)).returning();
+      res.status(200).json(updated);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to link attachment' });
+    }
+  });
+
+  app.get('/api/attachments/by-entity', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { type, id } = req.query;
+      if (!type || !id) return res.status(400).json({ message: 'type and id required' });
+      let whereClause;
+      if (type === 'invoice') whereClause = eq(attachments.invoiceId, Number(id));
+      else if (type === 'client') whereClause = eq(attachments.clientId, Number(id));
+      else if (type === 'reminder') whereClause = eq(attachments.reminderId, Number(id));
+      else return res.status(400).json({ message: 'Invalid type' });
+      const files = await db.select().from(attachments).where(whereClause);
+      res.status(200).json(files);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch attachments' });
+    }
+  });
+
+  // --- Invoice Templates ---
+  app.post('/api/invoice-template', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { name, templatePath } = req.body;
+      if (!name || !templatePath) return res.status(400).json({ message: 'name and templatePath required' });
+      const [template] = await db.insert(invoiceTemplates).values({
+        userId: user.id,
+        name,
+        templatePath,
+        createdAt: new Date(),
+      }).returning();
+      res.status(201).json(template);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to save template' });
+    }
+  });
+
+  app.get('/api/invoice-template', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const templates = await db.select().from(invoiceTemplates).where(eq(invoiceTemplates.userId, user.id));
+      res.status(200).json(templates);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch templates' });
+    }
+  });
+
+  // --- Audit Logs (role-based access) ---
+  app.get('/api/audit-logs', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      let logs;
+      if (user.role === 'super_admin') {
+        logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+      } else if (user.role === 'admin') {
+        logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id)).orderBy(desc(auditLogs.timestamp));
+      } else {
+        logs = await db.select().from(auditLogs).where(eq(auditLogs.userId, user.id)).orderBy(desc(auditLogs.timestamp));
+      }
+      res.status(200).json(logs);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch audit logs' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

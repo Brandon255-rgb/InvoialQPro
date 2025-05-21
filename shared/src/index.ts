@@ -69,4 +69,35 @@ export interface InsertInvoiceItem {
   quantity: number;
   unitPrice: number;
   amount: number;
-} 
+}
+
+// Runtime constants
+export const INVOICE_STATUSES = [
+  'draft',
+  'sent',
+  'paid',
+  'overdue',
+  'cancelled',
+] as const;
+
+export const INVOICE_FREQUENCIES = [
+  'weekly',
+  'biweekly',
+  'monthly',
+  'quarterly',
+  'annually',
+] as const;
+
+// Example runtime validation function
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function isValidStatus(status: string): boolean {
+  return (INVOICE_STATUSES as readonly string[]).includes(status);
+}
+
+// Zod schemas from schema.ts
+import { insertClientSchema, insertUserSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema, insertTeamMemberSchema, insertAuditLogSchema } from '../schema';
+
+export { insertClientSchema, insertUserSchema, insertItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertReminderSchema, insertTeamMemberSchema, insertAuditLogSchema }; 

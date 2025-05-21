@@ -1,7 +1,7 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layouts/Dashboard";
 import ClientForm from "@/components/clients/ClientForm";

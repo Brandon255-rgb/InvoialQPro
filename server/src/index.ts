@@ -5,12 +5,26 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import router from './routes';
 import { startRecurringInvoiceCron } from './cron/recurring';
+import helmet from 'helmet';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function createServer() {
   const app = express();
+
+  // Security headers
+  app.use(helmet());
+
+  // Enforce HTTPS in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+      if (req.headers['x-forwarded-proto'] !== 'https') {
+        return res.redirect('https://' + req.headers.host + req.url);
+      }
+      next();
+    });
+  }
 
   // Middleware
   app.use(cors());

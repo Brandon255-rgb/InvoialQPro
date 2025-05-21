@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useAuth } from "../hooks/use-auth";
-import { useToast } from "../hooks/use-toast";
-import DashboardLayout from "../components/layouts/Dashboard";
-import InvoiceForm from "../components/invoices/InvoiceForm";
-import { Button } from "../ui/button";
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from "../../hooks/use-toast";
+import DashboardLayout from "../../components/layouts/Dashboard";
+import InvoiceForm from "../../components/invoices/InvoiceForm";
+import { Button } from "../../components/ui/button";
 import { ArrowLeft, Edit, Download, Send, Printer } from "lucide-react";
 import { Link } from "wouter";
-import { apiRequest } from "../lib/queryClient";
-import { formatCurrency, formatDate, getStatusColor } from "../lib/utils";
-import { downloadInvoicePdf, sendInvoiceEmail } from "../lib/email";
-import { Badge } from "../ui/badge";
+import { apiRequest } from "../../lib/queryClient";
+import { formatCurrency, formatDate, getStatusColor } from "../../lib/utils";
+import { downloadInvoicePdf, sendInvoiceEmail } from "../../lib/email";
+import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { Avatar } from "../ui/avatar";
+} from "../../components/ui/dialog";
+import { Label } from "../../components/ui/label";
+import { Input } from "../../components/ui/input";
+import { Avatar } from "../../components/ui/avatar";
+import type { Invoice, Client } from "@shared/schema";
 
 const InvoiceDetail = () => {
   const { user } = useAuth();
@@ -304,7 +305,11 @@ const InvoiceDetail = () => {
                 </h3>
                 {client && (
                   <div className="flex items-start">
-                    <Avatar name={client.name} size="md" />
+                    <Avatar className="h-10 w-10">
+                      <span className="text-lg font-semibold">
+                        {client.name.charAt(0).toUpperCase()}
+                      </span>
+                    </Avatar>
                     <div className="ml-3">
                       <div className="font-semibold text-gray-900">{client.name}</div>
                       {client.company && (

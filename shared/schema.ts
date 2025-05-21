@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // User roles enum
-export const roleEnum = pgEnum('role', ['admin', 'employee', 'user']);
+export const roleEnum = pgEnum('role', ['super_admin', 'admin', 'user']);
 
 // User status enum
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'suspended']);
@@ -83,6 +83,7 @@ export const invoiceItems = pgTable("invoice_items", {
   quantity: integer("quantity").notNull(),
   price: doublePrecision("price").notNull(),
   total: doublePrecision("total").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Reminders table
@@ -95,6 +96,68 @@ export const reminders = pgTable("reminders", {
   dueDate: timestamp("due_date").notNull(),
   isCompleted: boolean("is_completed").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// File attachments table
+export const attachments = pgTable('attachments', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  fileName: text('file_name').notNull(),
+  fileType: text('file_type').notNull(),
+  fileSize: integer('file_size').notNull(),
+  filePath: text('file_path').notNull(),
+  invoiceId: integer('invoice_id').references(() => invoices.id),
+  clientId: integer('client_id').references(() => clients.id),
+  reminderId: integer('reminder_id').references(() => reminders.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Company settings table
+export const companySettings = pgTable('company_settings', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  logoPath: text('logo_path'),
+  companyName: text('company_name'),
+  taxNumber: text('tax_number'),
+  address: text('address'),
+  phone: text('phone'),
+  email: text('email'),
+  website: text('website'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Team members table
+export const teamMembers = pgTable('team_members', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  invitedBy: integer('invited_by').references(() => users.id).notNull(),
+  email: text('email').notNull(),
+  role: roleEnum('role').default('user').notNull(),
+  status: text('status').default('pending').notNull(), // pending, active, rejected
+  inviteToken: text('invite_token'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Audit logs table
+export const auditLogs = pgTable('audit_logs', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id),
+  action: text('action').notNull(),
+  entity: text('entity').notNull(),
+  entityId: integer('entity_id'),
+  timestamp: timestamp('timestamp').defaultNow(),
+});
+
+// Invoice templates table
+export const invoiceTemplates = pgTable('invoice_templates', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  templatePath: text('template_path').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Define Zod schemas
@@ -132,3 +195,13 @@ export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+// Add missing schemas
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });

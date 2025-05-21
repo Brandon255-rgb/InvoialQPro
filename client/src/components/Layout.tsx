@@ -1,21 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { Box, Container } from '@mui/material';
 import Sidebar from './layout/Sidebar';
 import Header from './layout/Header';
 
-export default function Layout() {
+interface LayoutProps {
+  children: ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-100">
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: 'background.default' }}>
       <Sidebar />
-      <div className="flex flex-col w-0 flex-1 overflow-hidden">
+      <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <Header />
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              <Outlet />
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
+        <Box component="main" sx={{ flex: 1, overflow: 'auto', py: 3 }}>
+          <Container maxWidth="xl">
+            {children}
+          </Container>
+        </Box>
+      </Box>
+    </Box>
   );
 } 

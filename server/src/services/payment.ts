@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { Invoice, invoices } from '@shared/schema';
 import { db } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { sendPaymentConfirmation } from './email';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -40,7 +41,17 @@ export async function handleWebhook(event: Stripe.Event) {
           .set({ status: 'paid' })
           .where(eq(invoices.id, invoiceId));
         
-        // TODO: Send payment confirmation email
+        // Get invoice and client details for email
+        const invoice = await db.query.invoices.findFirst({
+          where: eq(invoices.id, invoiceId),
+          with: {
+            client: true
+          }
+        });
+
+        if (invoice && invoice.client) {
+          await sendPaymentConfirmation(invoice, invoice.client);
+        }
         break;
 
       case 'payment_intent.payment_failed':
@@ -52,7 +63,18 @@ export async function handleWebhook(event: Stripe.Event) {
           .set({ status: 'overdue' })
           .where(eq(invoices.id, failedInvoiceId));
         
-        // TODO: Send payment failure notification
+        // Get invoice and client details for notification
+        const failedInvoice = await db.query.invoices.findFirst({
+          where: eq(invoices.id, failedInvoiceId),
+          with: {
+            client: true
+          }
+        });
+
+        if (failedInvoice && failedInvoice.client) {
+          // TODO: Send payment failure notification
+          console.log(`Payment failed for invoice ${failedInvoice.invoiceNumber}`);
+        }
         break;
     }
   } catch (error) {

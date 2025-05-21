@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import axios, { AxiosError } from 'axios';
 
 interface User {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<AuthError | null>(null);
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const clearError = () => setError(null);
 
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-      navigate('/');
+      setLocation('/');
     } catch (err) {
       const authError = handleAxiosError(err);
       setError(authError);
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-      navigate('/');
+      setLocation('/');
     } catch (err) {
       const authError = handleAxiosError(err);
       setError(authError);
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
-    navigate('/login');
+    setLocation('/login');
   };
 
   return (
