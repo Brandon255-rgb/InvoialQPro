@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../dashboard/Sidebar";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLocation, useRoute } from "wouter";
 import { Loader2, Menu, X, Search, Bell, HelpCircle } from "lucide-react";
 

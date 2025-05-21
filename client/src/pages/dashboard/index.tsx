@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/Dashboard";
 import StatsCard from "@/components/dashboard/StatsCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";

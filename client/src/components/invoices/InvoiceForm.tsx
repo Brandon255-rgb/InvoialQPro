@@ -27,7 +27,7 @@ import { CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { insertInvoiceSchema } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Extend the schema with client validation rules
 const invoiceFormSchema = z.object({
