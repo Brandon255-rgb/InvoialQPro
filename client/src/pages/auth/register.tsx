@@ -67,10 +67,9 @@ export default function Register() {
           data: {
             name: data.name,
           },
+          emailRedirectTo: `${window.location.origin}/confirm-email?type=signup`,
         },
       });
-      console.log('Supabase signUp authData:', authData);
-      console.log('Supabase signUp authError:', authError);
 
       if (authError) {
         toast({
@@ -112,15 +111,15 @@ export default function Register() {
         });
       }
 
-      setSuccessEmail(data.email);
+      // Show success message and redirect to confirm email page
       toast({
-        title: "User created successfully!",
-        description: "You can now log in with your credentials.",
-        action: {
-          label: "Go to Login",
-          onClick: () => setRedirectAfterToast(true),
-        },
+        title: "Registration successful!",
+        description: "Please check your email to verify your account.",
+        duration: 5000,
       });
+
+      // Navigate to confirm email page
+      navigate("/confirm-email?pending=true");
     } catch (error) {
       console.error("Registration error:", error);
       toast({

@@ -53,6 +53,9 @@ export default function Login() {
         if (error.message === "Invalid login credentials") {
           throw new Error("Invalid email or password");
         }
+        if (error.message.includes("Email not confirmed")) {
+          throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
+        }
         throw error;
       }
 
@@ -60,11 +63,34 @@ export default function Login() {
         throw new Error("No user data returned");
       }
 
+      const user = authData.user;
+
+      // Check if email is verified
+      if (!user.email_confirmed_at) {
+        toast({
+          title: "Email not verified",
+          description: "Please check your email for the verification link.",
+          variant: "destructive",
+        });
+        // Optionally resend verification email
+        const { error: resendError } = await supabase.auth.resend({
+          type: 'signup',
+          email: data.email,
+        });
+        if (!resendError) {
+          toast({
+            title: "Verification email resent",
+            description: "Please check your inbox for the verification link.",
+          });
+        }
+        return;
+      }
+
       // Fetch profile from public.users (profile info only)
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
-        .eq("id", authData.user.id)
+        .eq("id", user.id)
         .single();
 
       // If no profile, prompt user to complete profile (do not treat as login error)
@@ -79,17 +105,13 @@ export default function Login() {
         return;
       }
 
-      // Store user data in session
-      sessionStorage.setItem("invoiaiqpro_user", JSON.stringify({
-        ...authData.user,
-        ...profile,
-      }));
-
+      // Show success message
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: `Welcome back, ${profile.name || 'User'}!`,
       });
 
+      // Navigate to dashboard
       navigate("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
@@ -172,11 +194,11 @@ export default function Login() {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                className="h-4 w-4 rounded border-gray-300 accent-white checked:accent-orange-500 focus:ring-orange-500"
               />
               <label
                 htmlFor="remember-me"
-                className="ml-2 block text-sm text-gray-900"
+                className="ml-2 block text-sm text-white"
               >
                 Remember me
               </label>

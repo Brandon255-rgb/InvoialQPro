@@ -34,29 +34,27 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
             <>
               <hr className="w-full border-t border-gray-700 my-4" />
               <span className="text-gray-300">New to invoiaiqpro?</span>
-              <Link href="/register" className="w-full">
-                <Button
-                  asChild
-                  className="w-full px-6 py-3 text-base font-medium text-black bg-white border border-transparent rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-sm mt-2"
-                  style={{ boxShadow: '0 2px 12px 0 rgba(0,0,0,0.25), 0 1.5px 0 0 #fff inset' }}
+              <div className="w-full flex justify-center mt-2">
+                <a
+                  href="/register"
+                  className="text-sm text-orange-400 hover:text-orange-300 underline transition-colors"
                 >
-                  <span>Create account</span>
-                </Button>
-              </Link>
+                  Create account
+                </a>
+              </div>
             </>
           ) : (
             <>
               <hr className="w-full border-t border-gray-700 my-4" />
               <span className="text-gray-300">Already have an account?</span>
-              <Link href="/login" className="w-full">
-                <Button
-                  asChild
-                  className="w-full px-6 py-3 text-base font-medium text-black bg-white border border-transparent rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-sm mt-2"
-                  style={{ boxShadow: '0 2px 12px 0 rgba(0,0,0,0.25), 0 1.5px 0 0 #fff inset' }}
+              <div className="w-full flex justify-center mt-2">
+                <a
+                  href="/login"
+                  className="text-sm text-orange-400 hover:text-orange-300 underline transition-colors"
                 >
-                  <span>Sign in</span>
-                </Button>
-              </Link>
+                  Sign in
+                </a>
+              </div>
             </>
           )}
         </div>
