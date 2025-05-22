@@ -5,9 +5,7 @@ import { processRecurringInvoices } from '../services/recurring';
 export function startRecurringInvoiceCron() {
   cron.schedule('0 0 * * *', async () => {
     try {
-      console.log('Processing recurring invoices...');
       await processRecurringInvoices();
-      console.log('Recurring invoices processed successfully');
     } catch (error) {
       console.error('Error processing recurring invoices:', error);
     }

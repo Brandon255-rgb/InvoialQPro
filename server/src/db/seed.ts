@@ -86,7 +86,6 @@ async function seed() {
     updatedAt: new Date(),
   });
 
-  console.log('Seed data inserted successfully');
   process.exit(0);
 }
 

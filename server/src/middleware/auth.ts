@@ -87,6 +87,5 @@ export const requireRole = (allowedRoles: ('super_admin' | 'admin' | 'user')[]) 
 
 // Audit log middleware
 export const auditLog = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`[AUDIT] ${req.method} ${req.originalUrl}`);
   next();
 }; 

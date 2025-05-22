@@ -178,11 +178,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center">
           <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-800">
-            {user.name.charAt(0)}
+            {(user?.name && typeof user.name === 'string' && user.name.length > 0) ? user.name.charAt(0) : '?'}
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium text-gray-700">{user.name}</p>
-            <p className="text-xs text-gray-500">{user.email}</p>
+            <p className="text-sm font-medium text-gray-700">{(user?.name && typeof user.name === 'string' && user.name.length > 0) ? user.name : 'User'}</p>
+            <p className="text-xs text-gray-500">{user?.email || ''}</p>
           </div>
           <button
             onClick={logout}

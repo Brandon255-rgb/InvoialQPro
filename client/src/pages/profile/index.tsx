@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, User, Mail, Building2, Phone, MapPin, Calendar, VenusAndMars, Globe, Briefcase } from "lucide-react";
+import { Loader2, User, Mail, Building2, Phone, MapPin, Calendar, VenusAndMars, Globe, Briefcase, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WheelDatePicker } from "@/components/ui/wheel-date-picker";
@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { ProfilePictureUpload } from "@/components/ProfilePictureUpload";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SimpleDatePicker } from "@/components/ui/simple-date-picker";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -54,13 +55,16 @@ export default function Profile() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(user?.user_metadata?.avatar_url || null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.user_metadata?.name || "",
       email: user?.email || "",
-      dateOfBirth: user?.user_metadata?.dateOfBirth ? new Date(user.user_metadata.dateOfBirth) : new Date(2000, 0, 1),
+      dateOfBirth: user?.user_metadata?.dateOfBirth
+        ? new Date(user.user_metadata.dateOfBirth)
+        : new Date(2000, 0, 1),
       gender: user?.user_metadata?.gender || undefined,
       company: user?.user_metadata?.company || "",
       jobTitle: user?.user_metadata?.jobTitle || "",
@@ -118,6 +122,7 @@ export default function Profile() {
         title: "Profile updated",
         description: "Your profile has been successfully updated.",
       });
+      setNotification({ message: "Profile has been updated", type: "success" });
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
@@ -125,10 +130,19 @@ export default function Profile() {
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
+      setNotification({ message: "Failed to update profile. Please try again.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Auto-dismiss notification after 3 seconds
+  React.useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const handleProfilePictureUpdate = async (url: string) => {
     setProfilePicture(url);
@@ -137,6 +151,24 @@ export default function Profile() {
 
   return (
     <div className="container mx-auto py-8">
+      {/* Centered notification modal */}
+      {notification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className={`bg-black border-2 rounded-xl px-8 py-6 shadow-lg flex flex-col items-center gap-2 ${notification.type === 'success' ? 'border-orange-500' : 'border-red-500'}`}
+            style={{ minWidth: 300 }}
+          >
+            <div className={`text-lg font-semibold ${notification.type === 'success' ? 'text-orange-500' : 'text-red-500'}`}>{notification.message}</div>
+            <button
+              className="absolute top-2 right-2 text-white hover:text-orange-500"
+              onClick={() => setNotification(null)}
+              style={{ position: 'absolute', top: 8, right: 16 }}
+              aria-label="Close notification"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="max-w-3xl mx-auto">
         <Card>
           <CardHeader>
@@ -203,36 +235,16 @@ export default function Profile() {
                       control={form.control}
                       name="dateOfBirth"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem>
                           <FormLabel>Date of Birth</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full pl-9 text-left font-normal bg-black border-orange-500 text-white hover:bg-orange-500/20 hover:text-white",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-black border-orange-500" align="start">
-                              <WheelDatePicker
-                                value={field.value || new Date(2000, 0, 1)}
-                                onChange={field.onChange}
-                                minYear={1900}
-                                maxYear={new Date().getFullYear()}
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <FormControl>
+                            <SimpleDatePicker
+                              value={field.value || new Date(2000, 0, 1)}
+                              onChange={field.onChange}
+                              minYear={1800}
+                              maxYear={new Date().getFullYear()}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

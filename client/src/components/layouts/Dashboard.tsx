@@ -153,9 +153,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="hidden md:flex items-center">
                 <button className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-800">
-                    {user.name.charAt(0)}
+                    {(user?.name && typeof user.name === 'string' && user.name.length > 0) ? user.name.charAt(0) : '?'}
                   </div>
-                  <span className="ml-2 mr-1">{user.name.split(' ')[0]}</span>
+                  <span className="ml-2 mr-1">{(user?.name && typeof user.name === 'string' && user.name.length > 0) ? user.name.split(' ')[0] : 'User'}</span>
                   <i className="fas fa-chevron-down text-xs ml-1"></i>
                 </button>
               </div>

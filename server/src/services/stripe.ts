@@ -50,8 +50,6 @@ export async function handleStripeWebhook(req: Request): Promise<void> {
       } else {
         await handleSetupIntentFailure(setupIntent);
       }
-    } else {
-      console.log(`Unhandled event type ${event.type}`);
     }
   } catch (error: unknown) {
     const err = error as Error;

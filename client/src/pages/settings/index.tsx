@@ -72,11 +72,22 @@ type NotificationSettings = z.infer<typeof notificationSchema>;
 type AppearanceSettings = z.infer<typeof appearanceSchema>;
 type SecuritySettings = z.infer<typeof securitySchema>;
 
+const SECTIONS = [
+  { key: "profile", label: "Profile" },
+  { key: "security", label: "Security" },
+  { key: "notifications", label: "Notifications" },
+  { key: "appearance", label: "Appearance" },
+  { key: "billing", label: "Billing" },
+  { key: "api", label: "API & Integrations" },
+  { key: "danger", label: "Danger Zone" },
+];
+
 const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeSection, setActiveSection] = useState("profile");
   
   // Forms setup
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
@@ -291,635 +302,475 @@ const Settings = () => {
       title="Settings"
       description="Manage your account settings and preferences"
     >
-      <Tabs defaultValue="account" className="space-y-6">
-        <TabsList className="grid grid-cols-4 max-w-md">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="password">Password</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-        </TabsList>
-        
-        {/* Account Settings */}
-        <TabsContent value="account">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
-                Update your account details and profile information
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={profileForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={profileForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="john@example.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={profileForm.control}
-                      name="company"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Your Company" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={profileForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+1 (555) 123-4567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
+      <div className="flex gap-x-6">
+        {/* Sidebar */}
+        <aside className="w-64 h-full bg-surface border-r border-border p-6 space-y-4 rounded-xl">
+          <nav className="space-y-2">
+            {SECTIONS.map((section) => (
+              <button
+                key={section.key}
+                className={`block w-full text-left px-3 py-2 rounded-md text-muted hover:bg-border transition font-medium ${activeSection === section.key ? 'bg-border text-accent' : ''}`}
+                onClick={() => setActiveSection(section.key)}
+              >
+                {section.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+        {/* Main Section */}
+        <div className="flex-1">
+          {activeSection === "profile" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">Profile</h2>
+              <p className="text-muted text-sm mb-6">Update your personal information.</p>
+              <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={profileForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} disabled />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={profileForm.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Business Address</FormLabel>
+                        <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="123 Business St, City, State, Zip" 
-                            className="min-h-[100px]"
-                            {...field} 
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit" className="bg-accent text-white rounded-lg px-4 py-2 text-sm hover:bg-accent/90 transition">
+                    Save
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+          {activeSection === "security" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">Security</h2>
+              <p className="text-muted text-sm mb-6">Change your password and manage security settings.</p>
+              <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
+                <div className="space-y-4">
+                  <FormField
+                    control={securityForm.control}
+                    name="twoFactorAuth"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Two-Factor Authentication</FormLabel>
+                          <FormDescription>
+                            Add an extra layer of security to your account
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
                           />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={securityForm.control}
+                    name="sessionTimeout"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Session Timeout</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select timeout" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="15">15 minutes</SelectItem>
+                            <SelectItem value="30">30 minutes</SelectItem>
+                            <SelectItem value="60">1 hour</SelectItem>
+                            <SelectItem value="120">2 hours</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormDescription>
-                          This address will appear on your invoices
+                          Automatically log out after period of inactivity
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Button type="submit" disabled={profileMutation.isPending}>
-                    {profileMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Password Settings */}
-        <TabsContent value="password">
-          <Card>
-            <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>
-                Update your password to keep your account secure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-6">
+
                   <FormField
-                    control={passwordForm.control}
-                    name="currentPassword"
+                    control={securityForm.control}
+                    name="loginNotifications"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Password</FormLabel>
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Login Notifications</FormLabel>
+                          <FormDescription>
+                            Get notified when someone logs into your account
+                          </FormDescription>
+                        </div>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <FormField
-                    control={passwordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Password must be at least 8 characters long
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button type="submit" disabled={passwordMutation.isPending}>
-                    {passwordMutation.isPending ? "Updating..." : "Update Password"}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Notification Settings */}
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Manage how and when you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...notificationForm}>
-                <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
-                  <div className="space-y-4">
-                    <FormField
-                      control={notificationForm.control}
-                      name="emailNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Email Notifications</FormLabel>
-                            <FormDescription>
-                              Receive notifications via email
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={notificationForm.control}
-                      name="invoiceReminders"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Invoice Reminders</FormLabel>
-                            <FormDescription>
-                              Get reminded about upcoming and overdue invoices
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={notificationForm.control}
-                      name="paymentNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Payment Notifications</FormLabel>
-                            <FormDescription>
-                              Get notified when payments are received
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={notificationForm.control}
-                      name="marketingEmails"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Marketing Emails</FormLabel>
-                            <FormDescription>
-                              Receive updates about new features and promotions
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={notificationForm.control}
-                      name="reminderFrequency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Reminder Frequency</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            How often you want to receive reminders
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="bg-orange-600 hover:bg-orange-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Appearance Settings */}
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-              <CardDescription>
-                Customize how the application looks and feels
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...appearanceForm}>
-                <form onSubmit={appearanceForm.handleSubmit(onAppearanceSubmit)} className="space-y-6">
-                  <div className="space-y-4">
-                    <FormField
-                      control={appearanceForm.control}
-                      name="theme"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Theme</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select theme" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="light">Light</SelectItem>
-                              <SelectItem value="dark">Dark</SelectItem>
-                              <SelectItem value="system">System</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Choose your preferred color theme
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={appearanceForm.control}
-                      name="fontSize"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Font Size</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select font size" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="small">Small</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="large">Large</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Adjust the text size throughout the application
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={appearanceForm.control}
-                      name="currency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Currency</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="USD" />
-                          </FormControl>
-                          <FormDescription>
-                            Set your preferred currency for invoices and payments
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={appearanceForm.control}
-                      name="dateFormat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date Format</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="MM/DD/YYYY" />
-                          </FormControl>
-                          <FormDescription>
-                            Choose how dates are displayed
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="bg-orange-600 hover:bg-orange-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Security Settings */}
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Manage your account security preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...securityForm}>
-                <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
-                  <div className="space-y-4">
-                    <FormField
-                      control={securityForm.control}
-                      name="twoFactorAuth"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Two-Factor Authentication</FormLabel>
-                            <FormDescription>
-                              Add an extra layer of security to your account
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={securityForm.control}
-                      name="sessionTimeout"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Session Timeout</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select timeout" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="15">15 minutes</SelectItem>
-                              <SelectItem value="30">30 minutes</SelectItem>
-                              <SelectItem value="60">1 hour</SelectItem>
-                              <SelectItem value="120">2 hours</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Automatically log out after period of inactivity
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={securityForm.control}
-                      name="loginNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Login Notifications</FormLabel>
-                            <FormDescription>
-                              Get notified when someone logs into your account
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="bg-orange-600 hover:bg-orange-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Billing Settings */}
-        <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription Plan</CardTitle>
-              <CardDescription>
-                Manage your subscription and billing information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-primary-50 rounded-lg p-4 border border-primary-100">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-primary-700">Pro Plan</h3>
-                    <p className="text-sm text-primary-600">$29/month, billed monthly</p>
-                  </div>
-                  <Badge variant="outline" className="bg-primary-100 text-primary-800 border-primary-200">
-                    Current Plan
-                  </Badge>
                 </div>
-                <div className="mt-3">
-                  <div className="h-1.5 w-full bg-primary-200 rounded-full overflow-hidden">
-                    <div className="bg-primary-600 h-full rounded-full" style={{ width: "65%" }}></div>
-                  </div>
-                  <div className="flex justify-between mt-1 text-xs text-primary-700">
-                    <span>65% used</span>
-                    <span>35 days left</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border rounded-lg divide-y">
-                <div className="p-4 flex justify-between items-center">
-                  <div className="flex items-center">
-                    <CreditCard className="h-5 w-5 text-gray-500 mr-2" />
-                    <div>
-                      <p className="font-medium">Visa ending in 4242</p>
-                      <p className="text-sm text-gray-500">Expires 10/2025</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">Update</Button>
-                </div>
-                <div className="p-4">
-                  <p className="font-medium">Billing History</p>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span>July 1, 2023</span>
-                      <span className="font-medium">$29.00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span>June 1, 2023</span>
-                      <span className="font-medium">$29.00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span>May 1, 2023</span>
-                      <span className="font-medium">$29.00</span>
-                    </div>
-                  </div>
-                  <Button variant="link" size="sm" className="mt-2 px-0">
-                    View all transactions
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex space-x-4">
-                <Button variant="outline">Change Plan</Button>
-                <Button variant="outline" className="text-danger border-danger hover:bg-danger/10">
-                  Cancel Subscription
+
+                <Button
+                  type="submit"
+                  className="bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </form>
+            </div>
+          )}
+          {activeSection === "notifications" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">Notifications</h2>
+              <p className="text-muted text-sm mb-6">Manage your notification preferences.</p>
+              <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
+                <div className="space-y-4">
+                  <FormField
+                    control={notificationForm.control}
+                    name="emailNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Email Notifications</FormLabel>
+                          <FormDescription>
+                            Receive notifications via email
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="invoiceReminders"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Invoice Reminders</FormLabel>
+                          <FormDescription>
+                            Get reminded about upcoming and overdue invoices
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="paymentNotifications"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Payment Notifications</FormLabel>
+                          <FormDescription>
+                            Get notified when payments are received
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="marketingEmails"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Marketing Emails</FormLabel>
+                          <FormDescription>
+                            Receive updates about new features and promotions
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="reminderFrequency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reminder Frequency</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          How often you want to receive reminders
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </div>
+          )}
+          {activeSection === "appearance" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">Appearance</h2>
+              <p className="text-muted text-sm mb-6">Customize the look and feel of your dashboard.</p>
+              <form onSubmit={appearanceForm.handleSubmit(onAppearanceSubmit)} className="space-y-6">
+                <div className="space-y-4">
+                  <FormField
+                    control={appearanceForm.control}
+                    name="theme"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Theme</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select theme" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="light">Light</SelectItem>
+                            <SelectItem value="dark">Dark</SelectItem>
+                            <SelectItem value="system">System</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose your preferred color theme
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={appearanceForm.control}
+                    name="fontSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Font Size</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select font size" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="small">Small</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="large">Large</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Adjust the text size throughout the application
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={appearanceForm.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Default Currency</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="USD" />
+                        </FormControl>
+                        <FormDescription>
+                          Set your preferred currency for invoices and payments
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={appearanceForm.control}
+                    name="dateFormat"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date Format</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="MM/DD/YYYY" />
+                        </FormControl>
+                        <FormDescription>
+                          Choose how dates are displayed
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </div>
+          )}
+          {activeSection === "billing" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">Billing</h2>
+              <p className="text-muted text-sm mb-6">Manage your subscription and payment methods.</p>
+              <div className="text-muted">Coming soon...</div>
+            </div>
+          )}
+          {activeSection === "api" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-white mb-2">API & Integrations</h2>
+              <p className="text-muted text-sm mb-6">Manage API keys and integrations.</p>
+              <div className="text-muted">Coming soon...</div>
+            </div>
+          )}
+          {activeSection === "danger" && (
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <h2 className="text-xl font-medium text-danger mb-2">Danger Zone</h2>
+              <p className="text-muted text-sm mb-6">Delete your account or export your data.</p>
+              <div className="text-muted">Coming soon...</div>
+            </div>
+          )}
+        </div>
+      </div>
     </DashboardLayout>
   );
 };

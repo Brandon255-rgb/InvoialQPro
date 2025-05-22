@@ -36,9 +36,7 @@ async function createServer() {
   // Use port 5001 explicitly
   const port = 5001;
   server.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
     startRecurringInvoiceCron();
-    console.log('Recurring invoice cron job started');
   });
 }
 
