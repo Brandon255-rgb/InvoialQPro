@@ -1,45 +1,92 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from 'jsonwebtoken';
-import { storage } from '../../storage';
+import { createClient } from '@supabase/supabase-js';
 
 // Constants
 export const SALT_ROUNDS = 12; // Industry standard for bcrypt
 export const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
-// Authentication middleware
-export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || ''
+);
+
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user: {
+        id: string;
+        email: string;
+        role: string;
+      } | undefined;
+    }
+  }
+}
+
+// Authentication middleware using Supabase JWT
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.query.userId || req.body.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
+
+    const token = authHeader.split(' ')[1];
     
-    const user = await storage.getUser(Number(userId));
-    
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
+    // Verify the JWT token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    
-    (req as any).user = user;
+
+    // Get user's role from metadata
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return res.status(401).json({ error: 'User profile not found' });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email!,
+      role: profile.role || 'user'
+    };
+
     next();
   } catch (error) {
-    res.status(500).json({ message: "Authentication error" });
+    console.error('Authentication error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
-// JWT Authentication middleware
-export const auth = (req: any, res: any, next: any) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
+// Role-based access control middleware
+export const requireRole = (allowedRoles: ('super_admin' | 'admin' | 'user')[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
+      if (!allowedRoles.includes(req.user.role as any)) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+};
+
+// Audit log middleware
+export const auditLog = (req: Request, res: Response, next: NextFunction) => {
+  console.log(`[AUDIT] ${req.method} ${req.originalUrl}`);
+  next();
 }; 

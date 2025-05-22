@@ -2,11 +2,9 @@ import { Request } from 'express';
 import { z } from 'zod';
 
 // Helper function to parse params
-export const getIdParam = (req: Request): number => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) {
-    throw new Error("Invalid ID parameter");
-  }
+export const getIdParam = (req: Request): string => {
+  const id = req.params.id;
+  // Optionally, validate UUID format here
   return id;
 };
 

@@ -31,7 +31,7 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
       return res.status(401).json({ message: "Authentication required" });
     }
     
-    const user = await storage.getUser(Number(userId));
+    const user = await storage.getUser(userId);
     
     if (!user) {
       return res.status(401).json({ message: "User not found" });
@@ -46,12 +46,8 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
 };
 
 // Helper function to parse params
-const getIdParam = (req: Request): number => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) {
-    throw new Error("Invalid ID parameter");
-  }
-  return id;
+const getIdParam = (req: Request): string => {
+  return req.params.id;
 };
 
 const router = Router();
@@ -108,7 +104,7 @@ const auditLog = async (req: Request, res: Response, next: NextFunction) => {
         userId: user.id,
         action: req.method + ' ' + req.path,
         entity: req.path.split('/')[2] || '',
-        entityId: req.params.id ? Number(req.params.id) : null,
+        entityId: req.params.id || null,
         timestamp: new Date(),
       });
     }
@@ -932,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics routes
   app.get("/api/analytics/dashboard", async (req: Request, res: Response) => {
     try {
-      const userId = Number(req.query.userId);
+      const userId = req.query.userId;
       if (isNaN(userId)) {
         return res.status(400).json({ message: "Valid userId is required" });
       }
@@ -1228,9 +1224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { type, id } = req.query;
       if (!type || !id) return res.status(400).json({ message: 'type and id required' });
       let whereClause;
-      if (type === 'invoice') whereClause = eq(attachments.invoiceId, Number(id));
-      else if (type === 'client') whereClause = eq(attachments.clientId, Number(id));
-      else if (type === 'reminder') whereClause = eq(attachments.reminderId, Number(id));
+      if (type === 'invoice') whereClause = eq(attachments.invoiceId, id);
+      else if (type === 'client') whereClause = eq(attachments.clientId, id);
+      else if (type === 'reminder') whereClause = eq(attachments.reminderId, id);
       else return res.status(400).json({ message: 'Invalid type' });
       const files = await db.select().from(attachments).where(whereClause);
       res.status(200).json(files);

@@ -1,196 +1,127 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useLocation } from 'wouter';
-import axios, { AxiosError } from 'axios';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface ValidationError {
-  field: string;
-  message: string;
-}
-
-interface AuthError {
-  message: string;
-  validationErrors?: ValidationError[];
-}
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  error: AuthError | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
-  clearError: () => void;
+  session: Session | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const validatePassword = (password: string): ValidationError[] => {
-  const errors: ValidationError[] = [];
-  if (password.length < 8) {
-    errors.push({ field: 'password', message: 'Password must be at least 8 characters long' });
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one uppercase letter' });
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one lowercase letter' });
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one number' });
-  }
-  return errors;
-};
-
-const validateName = (name: string): ValidationError[] => {
-  const errors: ValidationError[] = [];
-  if (name.length < 2) {
-    errors.push({ field: 'name', message: 'Name must be at least 2 characters long' });
-  }
-  if (!/^[a-zA-Z\s-']+$/.test(name)) {
-    errors.push({ field: 'name', message: 'Name can only contain letters, spaces, hyphens, and apostrophes' });
-  }
-  return errors;
-};
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<AuthError | null>(null);
-  const [, setLocation] = useLocation();
-
-  const clearError = () => setError(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const devToken = sessionStorage.getItem('token');
-      if (devToken === 'dev-fake-token') {
-        setUser({
-          id: 'dev',
-          email: 'brandon.vanvuuren60@gmail.com',
-          name: 'Brandon Van Vuuren',
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      if (_event === "SIGNED_IN") {
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
         });
-        setIsLoading(false);
-        return;
+      } else if (_event === "SIGNED_OUT") {
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully.",
+        });
+        navigate("/login");
       }
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          const response = await axios.get('/api/auth/me');
-          setUser(response.data);
-        } catch (err) {
-          localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
-          if (axios.isAxiosError(err)) {
-            setError({ message: 'Session expired. Please login again.' });
-          }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, toast]);
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Clear session storage
+      sessionStorage.removeItem("invoiaiqpro_user");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error signing out",
+        description: error instanceof Error ? error.message : "An error occurred while signing out",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const refreshSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Update session storage
+        const { data: profile } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profile) {
+          sessionStorage.setItem("invoiaiqpro_user", JSON.stringify({
+            ...session.user,
+            ...profile,
+          }));
         }
       }
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleAxiosError = (err: unknown): AuthError => {
-    if (axios.isAxiosError(err)) {
-      const axiosError = err as AxiosError<{ message: string; errors?: ValidationError[] }>;
-      if (axiosError.response?.data) {
-        return {
-          message: axiosError.response.data.message || 'An error occurred',
-          validationErrors: axiosError.response.data.errors,
-        };
-      }
-      return { message: axiosError.message || 'Network error occurred' };
-    }
-    return { message: 'An unexpected error occurred' };
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      clearError();
-      
-      // Validate email
-      if (!validateEmail(email)) {
-        throw { message: 'Invalid email format', validationErrors: [{ field: 'email', message: 'Please enter a valid email address' }] };
-      }
-
-      const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      setLocation('/');
-    } catch (err) {
-      const authError = handleAxiosError(err);
-      setError(authError);
-      throw authError;
+    } catch (error) {
+      console.error("Error refreshing session:", error);
+      toast({
+        title: "Error refreshing session",
+        description: error instanceof Error ? error.message : "An error occurred while refreshing your session",
+        variant: "destructive",
+      });
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
-    try {
-      clearError();
-
-      // Validate inputs
-      const validationErrors: ValidationError[] = [];
-      
-      if (!validateEmail(email)) {
-        validationErrors.push({ field: 'email', message: 'Please enter a valid email address' });
-      }
-
-      const passwordErrors = validatePassword(password);
-      validationErrors.push(...passwordErrors);
-
-      const nameErrors = validateName(name);
-      validationErrors.push(...nameErrors);
-
-      if (validationErrors.length > 0) {
-        throw { message: 'Validation failed', validationErrors };
-      }
-
-      const response = await axios.post('/api/auth/register', { email, password, name });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      setLocation('/');
-    } catch (err) {
-      const authError = handleAxiosError(err);
-      setError(authError);
-      throw authError;
-    }
+  const value = {
+    user,
+    session,
+    loading,
+    signOut,
+    logout: signOut,
+    refreshSession,
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    setUser(null);
-    setLocation('/login');
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isLoading, error, login, register, logout, clearError }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 } 

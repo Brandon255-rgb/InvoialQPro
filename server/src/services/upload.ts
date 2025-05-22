@@ -2,9 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../db';
-import { attachments } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { supabaseAdmin } from '../lib/supabase';
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -50,41 +48,63 @@ export const upload = multer({
 
 // Save file metadata to database
 export async function saveFileMetadata(
-  userId: number,
+  userId: string,
   fileName: string,
   fileType: string,
   fileSize: number,
-  filePath: string
+  filePath: string,
+  invoiceId?: string,
+  clientId?: string,
+  reminderId?: string
 ) {
-  const [attachment] = await db.insert(attachments).values({
-    userId,
-    fileName,
-    fileType,
-    fileSize,
-    filePath
-  }).returning();
-  
+  const { data: attachment, error } = await supabaseAdmin
+    .from('attachments')
+    .insert({
+      user_id: userId,
+      file_name: fileName,
+      file_type: fileType,
+      file_size: fileSize,
+      file_path: filePath,
+      invoice_id: invoiceId,
+      client_id: clientId,
+      reminder_id: reminderId
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
   return attachment;
 }
 
 // Get file metadata
-export async function getFileMetadata(fileId: number) {
-  const [file] = await db.select().from(attachments).where(eq(attachments.id, fileId));
+export async function getFileMetadata(fileId: string) {
+  const { data: file, error } = await supabaseAdmin
+    .from('attachments')
+    .select('*')
+    .eq('id', fileId)
+    .single();
+
+  if (error) throw error;
   return file;
 }
 
 // Delete file
-export async function deleteFile(fileId: number) {
+export async function deleteFile(fileId: string) {
   const file = await getFileMetadata(fileId);
   if (file) {
     // Delete from filesystem
-    const filePath = path.join(process.cwd(), file.filePath);
+    const filePath = path.join(process.cwd(), file.file_path);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
     
     // Delete from database
-    await db.delete(attachments).where(eq(attachments.id, fileId));
+    const { error } = await supabaseAdmin
+      .from('attachments')
+      .delete()
+      .eq('id', fileId);
+
+    if (error) throw error;
     return true;
   }
   return false;

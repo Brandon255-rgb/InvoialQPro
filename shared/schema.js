@@ -11,9 +11,9 @@ export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'pai
 export const invoiceFrequencyEnum = pgEnum('invoice_frequency', ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually']);
 // Users table
 export const users = pgTable("users", {
-    id: serial("id").primaryKey(),
+    id: text("id").primaryKey(),
     email: text("email").notNull().unique(),
-    password: text("password").notNull(),
+    password: text("password"),
     name: text("name").notNull(),
     role: roleEnum("role").notNull().default('user'),
     status: userStatusEnum("status").notNull().default('active'),
@@ -24,8 +24,8 @@ export const users = pgTable("users", {
 });
 // Clients table
 export const clients = pgTable("clients", {
-    id: serial("id").primaryKey(),
-    userId: integer("user_id").notNull().references(() => users.id),
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id),
     name: text("name").notNull(),
     email: text("email").notNull(),
     phone: text("phone"),

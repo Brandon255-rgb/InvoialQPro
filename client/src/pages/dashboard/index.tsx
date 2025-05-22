@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layouts/Dashboard";
@@ -9,7 +9,7 @@ import RecentInvoices from "@/components/dashboard/RecentInvoices";
 import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
 import TopClients from "@/components/dashboard/TopClients";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { 
   Download, 
   Plus,
@@ -32,6 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/lib/supabase';
 
 const reminderFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -43,6 +44,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const userId = user?.id;
+  const [, navigate] = useLocation();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   
@@ -106,6 +110,31 @@ const Dashboard = () => {
       </Link>
     </div>
   );
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth/login');
+        return;
+      }
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (!profile) {
+        navigate('/profile');
+        return;
+      }
+      setProfile(profile);
+      setLoading(false);
+    };
+    fetchProfile();
+  }, [navigate]);
+  
+  if (loading) return <div>Loading...</div>;
+  if (!profile) return null;
   
   if (isLoading) {
     return (

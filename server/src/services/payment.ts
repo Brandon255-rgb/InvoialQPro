@@ -1,84 +1,148 @@
-import Stripe from 'stripe';
-import { Invoice, invoices } from '@shared/schema';
-import { db } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { sendPaymentConfirmation } from './email';
+import { supabaseAdmin } from '../lib/supabase';
+import { stripe } from './stripe';
+import { createAuditLog } from './audit';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
+// Create payment intent
+export async function createPaymentIntent(
+  invoiceId: string,
+  amount: number,
+  currency: string = 'usd'
+) {
+  // Get invoice details
+  const { data: invoice, error: invoiceError } = await supabaseAdmin
+    .from('invoices')
+    .select(`
+      *,
+      client:clients (
+        id,
+        name,
+        email
+      ),
+      user:users (
+        id,
+        email,
+        name
+      )
+    `)
+    .eq('id', invoiceId)
+    .single();
 
-export async function createPaymentIntent(invoice: Invoice) {
-  try {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(invoice.total * 100), // Convert to cents
-      currency: 'usd',
-      metadata: {
-        invoiceId: invoice.id.toString(),
-        invoiceNumber: invoice.invoiceNumber,
-      },
-    });
+  if (invoiceError) throw invoiceError;
+  if (!invoice) throw new Error('Invoice not found');
 
-    return {
-      clientSecret: paymentIntent.client_secret,
+  // Create payment intent
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(amount * 100), // Convert to cents
+    currency,
+    metadata: {
+      invoiceId,
+      userId: invoice.user_id,
+      clientId: invoice.client_id
+    },
+    customer_email: invoice.client.email,
+    description: `Payment for invoice ${invoice.invoice_number}`,
+    receipt_email: invoice.client.email
+  });
+
+  // Create audit log
+  await createAuditLog({
+    userId: invoice.user_id,
+    action: 'create_payment_intent',
+    entity: 'invoice',
+    entityId: invoiceId,
+    metadata: {
       paymentIntentId: paymentIntent.id,
-    };
-  } catch (error) {
-    console.error('Error creating payment intent:', error);
-    throw new Error('Failed to create payment intent');
-  }
+      amount,
+      currency
+    }
+  });
+
+  return paymentIntent;
 }
 
-export async function handleWebhook(event: Stripe.Event) {
-  try {
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const invoiceId = parseInt(paymentIntent.metadata.invoiceId);
-        
-        // Update invoice status to paid
-        await db.update(invoices)
-          .set({ status: 'paid' })
-          .where(eq(invoices.id, invoiceId));
-        
-        // Get invoice and client details for email
-        const invoice = await db.query.invoices.findFirst({
-          where: eq(invoices.id, invoiceId),
-          with: {
-            client: true
-          }
-        });
+// Get payment intent
+export async function getPaymentIntent(paymentIntentId: string) {
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  return paymentIntent;
+}
 
-        if (invoice && invoice.client) {
-          await sendPaymentConfirmation(invoice, invoice.client);
-        }
-        break;
+// Cancel payment intent
+export async function cancelPaymentIntent(paymentIntentId: string) {
+  const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId);
 
-      case 'payment_intent.payment_failed':
-        const failedPaymentIntent = event.data.object as Stripe.PaymentIntent;
-        const failedInvoiceId = parseInt(failedPaymentIntent.metadata.invoiceId);
-        
-        // Update invoice status to overdue if payment failed
-        await db.update(invoices)
-          .set({ status: 'overdue' })
-          .where(eq(invoices.id, failedInvoiceId));
-        
-        // Get invoice and client details for notification
-        const failedInvoice = await db.query.invoices.findFirst({
-          where: eq(invoices.id, failedInvoiceId),
-          with: {
-            client: true
-          }
-        });
-
-        if (failedInvoice && failedInvoice.client) {
-          // TODO: Send payment failure notification
-          console.log(`Payment failed for invoice ${failedInvoice.invoiceNumber}`);
-        }
-        break;
-    }
-  } catch (error) {
-    console.error('Error handling webhook:', error);
-    throw new Error('Failed to handle webhook');
+  // Get invoice ID from metadata
+  const invoiceId = paymentIntent.metadata.invoiceId;
+  if (invoiceId) {
+    // Create audit log
+    await createAuditLog({
+      userId: paymentIntent.metadata.userId,
+      action: 'cancel_payment_intent',
+      entity: 'invoice',
+      entityId: invoiceId,
+      metadata: {
+        paymentIntentId,
+        status: paymentIntent.status
+      }
+    });
   }
+
+  return paymentIntent;
+}
+
+// Get payment methods
+export async function getPaymentMethods(customerId: string) {
+  const paymentMethods = await stripe.paymentMethods.list({
+    customer: customerId,
+    type: 'card'
+  });
+  return paymentMethods;
+}
+
+// Attach payment method
+export async function attachPaymentMethod(
+  paymentMethodId: string,
+  customerId: string
+) {
+  const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
+    customer: customerId
+  });
+  return paymentMethod;
+}
+
+// Detach payment method
+export async function detachPaymentMethod(paymentMethodId: string) {
+  const paymentMethod = await stripe.paymentMethods.detach(paymentMethodId);
+  return paymentMethod;
+}
+
+// Get payment history
+export async function getPaymentHistory(invoiceId: string) {
+  const { data: payments, error } = await supabaseAdmin
+    .from('payments')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return payments;
+}
+
+// Get payment details
+export async function getPaymentDetails(paymentId: string) {
+  const { data: payment, error } = await supabaseAdmin
+    .from('payments')
+    .select(`
+      *,
+      invoice:invoices (
+        id,
+        invoice_number,
+        status,
+        total
+      )
+    `)
+    .eq('id', paymentId)
+    .single();
+
+  if (error) throw error;
+  return payment;
 } 

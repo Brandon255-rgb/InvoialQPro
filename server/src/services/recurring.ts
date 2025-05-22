@@ -1,5 +1,5 @@
-import { Invoice, InsertInvoice, invoiceFrequencyEnum, users } from '@shared/schema';
-import { db } from '../db';
+import { Invoice, InsertInvoice, invoiceFrequencyEnum, InvoiceItem, Client } from '@shared/schema';
+import { supabaseAdmin } from '../lib/supabase';
 import { generateInvoicePdf } from './pdf';
 import { sendInvoiceEmail } from './email';
 import { addDays, addMonths, addQuarters, addYears } from 'date-fns';
@@ -33,84 +33,193 @@ function generateNextInvoiceNumber(currentNumber: string): string {
 export async function processRecurringInvoices(): Promise<void> {
   const today = new Date();
   
-  // Get all recurring invoices that are due for generation
-  const recurringInvoices = await db.query.invoices.findMany({
-    where: (invoices, { and, eq, lte }) => and(
-      eq(invoices.isRecurring, true),
-      lte(invoices.nextInvoiceDate, today)
-    ),
-    with: {
-      client: true,
-      items: true
-    }
-  });
+  type RecurringInvoice = {
+    id: string;
+    user_id: string;
+    client_id: string;
+    invoice_number: string;
+    frequency: string;
+    subtotal: number;
+    tax_rate: number;
+    tax_amount: number;
+    total: number;
+    notes: string | null;
+    items: Array<{
+      id: string;
+      invoice_id: string;
+      item_id: string | null;
+      description: string;
+      quantity: number;
+      price: number;
+      total: number;
+      created_at: string;
+    }>;
+    client: {
+      id: string;
+      user_id: string;
+      name: string;
+      email: string;
+      phone: string | null;
+      company: string | null;
+      address: string | null;
+      notes: string | null;
+      created_at: string;
+    };
+  };
 
-  for (const invoice of recurringInvoices) {
+  // Get all recurring invoices that are due for generation
+  const { data: recurringInvoices, error: fetchError } = await supabaseAdmin
+    .from('invoices')
+    .select(`
+      *,
+      client:clients(*),
+      items:invoice_items(*)
+    `)
+    .eq('is_recurring', true)
+    .lte('next_invoice_date', today.toISOString());
+
+  if (fetchError) {
+    console.error('Error fetching recurring invoices:', fetchError);
+    return;
+  }
+
+  for (const invoice of (recurringInvoices as RecurringInvoice[])) {
     try {
       // Create new invoice
-      const newInvoice: InsertInvoice = {
-        userId: invoice.userId,
-        clientId: invoice.clientId,
-        invoiceNumber: generateNextInvoiceNumber(invoice.invoiceNumber),
+      const newInvoice = {
+        user_id: invoice.user_id,
+        client_id: invoice.client_id,
+        invoice_number: generateNextInvoiceNumber(invoice.invoice_number),
         status: 'draft',
-        issueDate: today,
-        dueDate: calculateNextInvoiceDate(today, invoice.frequency || 'monthly'),
+        issue_date: today.toISOString(),
+        due_date: calculateNextInvoiceDate(today, invoice.frequency || 'monthly').toISOString(),
         subtotal: invoice.subtotal,
-        tax: invoice.tax,
-        discount: invoice.discount,
+        tax_rate: invoice.tax_rate,
+        tax_amount: invoice.tax_amount,
         total: invoice.total,
         notes: invoice.notes,
-        isRecurring: true,
+        is_recurring: true,
         frequency: invoice.frequency,
-        nextInvoiceDate: calculateNextInvoiceDate(today, invoice.frequency || 'monthly')
+        next_invoice_date: calculateNextInvoiceDate(today, invoice.frequency || 'monthly').toISOString()
       };
 
-      const createdInvoice = await db.insert(invoices).values(newInvoice).returning();
+      const { data: createdInvoice, error: createError } = await supabaseAdmin
+        .from('invoices')
+        .insert(newInvoice)
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      let newItems: Array<{
+        invoice_id: string;
+        item_id: string | null;
+        description: string;
+        quantity: number;
+        price: number;
+        total: number;
+      }> = [];
 
       // Copy invoice items
       if (invoice.items && invoice.items.length > 0) {
-        const newItems = invoice.items.map(item => ({
-          invoiceId: createdInvoice[0].id,
-          itemId: item.itemId,
+        newItems = invoice.items.map(item => ({
+          invoice_id: createdInvoice.id,
+          item_id: item.item_id,
           description: item.description,
           quantity: item.quantity,
           price: item.price,
           total: item.total
         }));
 
-        await db.insert(invoiceItems).values(newItems);
+        const { error: itemsError } = await supabaseAdmin
+          .from('invoice_items')
+          .insert(newItems);
+
+        if (itemsError) throw itemsError;
       }
 
       // Update original invoice's next date
-      await db.update(invoices)
-        .set({ nextInvoiceDate: newInvoice.nextInvoiceDate })
-        .where(eq(invoices.id, invoice.id));
+      const { error: updateError } = await supabaseAdmin
+        .from('invoices')
+        .update({ next_invoice_date: newInvoice.next_invoice_date })
+        .eq('id', invoice.id);
+
+      if (updateError) throw updateError;
 
       // Generate PDF and send email
       if (invoice.client) {
         // Fetch latest user profile info
-        const [invoiceUser] = await db.query.users.findMany({ where: (users, { eq }) => eq(users.id, invoice.userId) });
-        const companyInfo = invoiceUser ? {
-          name: invoiceUser.company || invoiceUser.name,
-          email: invoiceUser.email,
-          address: invoiceUser.address || '',
-          phone: invoiceUser.phone || ''
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('id', invoice.user_id)
+          .single();
+
+        if (userError) throw userError;
+
+        const companyInfo = userData ? {
+          name: userData.company || userData.name,
+          email: userData.email,
+          address: userData.address || '',
+          phone: userData.phone || ''
         } : {
           name: 'Your Company',
           email: '',
           address: '',
           phone: ''
         };
+
+        // Convert Supabase client to expected Client type
+        const client: Client = {
+          id: parseInt(invoice.client.id),
+          userId: parseInt(invoice.client.user_id),
+          name: invoice.client.name,
+          email: invoice.client.email,
+          phone: invoice.client.phone,
+          company: invoice.client.company,
+          address: invoice.client.address,
+          notes: invoice.client.notes,
+          createdAt: new Date(invoice.client.created_at)
+        };
+
         const pdfBuffer = await generateInvoicePdf({
-          invoice: createdInvoice[0],
-          items: newItems,
-          client: invoice.client,
+          invoice: {
+            ...createdInvoice,
+            id: parseInt(createdInvoice.id),
+            userId: parseInt(createdInvoice.user_id),
+            clientId: parseInt(createdInvoice.client_id),
+            issueDate: new Date(createdInvoice.issue_date),
+            dueDate: new Date(createdInvoice.due_date),
+            createdAt: new Date(createdInvoice.created_at),
+            updatedAt: new Date(createdInvoice.updated_at)
+          },
+          items: newItems.map(item => ({
+            id: 0, // This will be set by the database
+            invoiceId: parseInt(createdInvoice.id),
+            itemId: item.item_id ? parseInt(item.item_id) : null,
+            description: item.description,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+            createdAt: new Date()
+          })),
+          client,
           company: companyInfo
         });
-        await sendInvoiceEmail(createdInvoice[0], invoice.client, pdfBuffer);
+
+        await sendInvoiceEmail({
+          ...createdInvoice,
+          id: parseInt(createdInvoice.id),
+          userId: parseInt(createdInvoice.user_id),
+          clientId: parseInt(createdInvoice.client_id),
+          issueDate: new Date(createdInvoice.issue_date),
+          dueDate: new Date(createdInvoice.due_date),
+          createdAt: new Date(createdInvoice.created_at),
+          updatedAt: new Date(createdInvoice.updated_at)
+        }, client, pdfBuffer);
       }
     } catch (error) {
-      console.error(`Error processing recurring invoice ${invoice.invoiceNumber}:`, error);
+      console.error(`Error processing recurring invoice ${invoice.invoice_number}:`, error);
     }
   }
 } 

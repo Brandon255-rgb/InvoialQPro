@@ -6,3 +6,5 @@ vite.config.ts.*
 *.tar.gz
 client/.env
 server/.env
+.env
+config.toml

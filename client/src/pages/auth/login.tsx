@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import {
   Form,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, Mail, Lock } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -25,11 +26,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const Login = () => {
-  const [, setLocation] = useLocation();
-  const { login } = useAuth();
+export default function Login() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,63 +41,94 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true);
-
-    // Bypass backend for dev credentials
-    if (data.email === "brandon.vanvuuren60@gmail.com" && data.password === "admin123") {
-      sessionStorage.setItem("token", "dev-fake-token");
-      setLocation("/dashboard");
-      toast({
-        title: "Login successful (dev mode)",
-        description: "Welcome, brandon.vanvuuren60@gmail.com!",
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      await login(data.email, data.password);
-      setLocation("/dashboard");
+      setIsSubmitting(true);
+
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        if (error.message === "Invalid login credentials") {
+          throw new Error("Invalid email or password");
+        }
+        throw error;
+      }
+
+      if (!authData.user) {
+        throw new Error("No user data returned");
+      }
+
+      // Fetch profile from public.users (profile info only)
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      // If no profile, prompt user to complete profile (do not treat as login error)
+      if (!profile) {
+        toast({
+          title: "Profile incomplete",
+          description: "Please complete your profile after logging in.",
+          variant: "default",
+        });
+        // Optionally, redirect to profile completion page
+        navigate("/profile");
+        return;
+      }
+
+      // Store user data in session
+      sessionStorage.setItem("invoiaiqpro_user", JSON.stringify({
+        ...authData.user,
+        ...profile,
+      }));
+
       toast({
         title: "Login successful",
-        description: "Welcome back to invoiaiqpro!",
+        description: "Welcome back!",
       });
+
+      navigate("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "Invalid email or password",
+        description: error instanceof Error ? error.message : "An error occurred during login",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <AuthLayout 
-      title="Sign in" 
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to your account"
       type="login"
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter your email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder="Enter your email"
+                      className="pl-9"
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage className="text-sm" />
+                <FormMessage />
               </FormItem>
             )}
           />
@@ -106,50 +138,77 @@ const Login = () => {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
-                  <a
-                    href="#"
-                    className="text-sm font-medium text-purple-600 hover:text-purple-500 transition-colors"
-                  >
-                    Forgot?
-                  </a>
-                </div>
+                <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter your password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      {...field}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="pl-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
-                <FormMessage className="text-sm" />
+                <FormMessage />
               </FormItem>
             )}
           />
 
-          <div className="pt-2">
-            <Button 
-              type="submit" 
-              className="w-full h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500" 
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900"
+              >
+                Remember me
+              </label>
+            </div>
+
+            <div className="text-sm">
+              <a
+                href="/forgot-password"
+                className="font-medium text-orange-600 hover:text-orange-500"
+              >
+                Forgot your password?
+              </a>
+            </div>
           </div>
+
+          <Button
+            type="submit"
+            className="w-full px-6 py-3 text-base font-medium text-black bg-white border border-transparent rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-sm"
+            style={{ boxShadow: '0 2px 12px 0 rgba(0,0,0,0.25), 0 1.5px 0 0 #fff inset' }}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
         </form>
       </Form>
     </AuthLayout>
   );
-};
-
-export default Login;
+}

@@ -10,74 +10,67 @@ import {
 // Interface for all storage operations
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
+  updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
   
   // Client operations
-  getClient(id: number): Promise<Client | undefined>;
-  getClientsByUserId(userId: number): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  getClientsByUserId(userId: string): Promise<Client[]>;
   createClient(client: InsertClient): Promise<Client>;
-  updateClient(id: number, client: Partial<Client>): Promise<Client | undefined>;
-  deleteClient(id: number): Promise<boolean>;
+  updateClient(id: string, client: Partial<Client>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<boolean>;
   
   // Item operations
-  getItem(id: number): Promise<Item | undefined>;
-  getItemsByUserId(userId: number): Promise<Item[]>;
+  getItem(id: string): Promise<Item | undefined>;
+  getItemsByUserId(userId: string): Promise<Item[]>;
   createItem(item: InsertItem): Promise<Item>;
-  updateItem(id: number, item: Partial<Item>): Promise<Item | undefined>;
-  deleteItem(id: number): Promise<boolean>;
+  updateItem(id: string, item: Partial<Item>): Promise<Item | undefined>;
+  deleteItem(id: string): Promise<boolean>;
   
   // Invoice operations
-  getInvoice(id: number): Promise<Invoice | undefined>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoices(): Promise<Invoice[]>;
-  getInvoicesByUserId(userId: number): Promise<Invoice[]>;
-  getInvoicesByClientId(clientId: number): Promise<Invoice[]>;
+  getInvoicesByUserId(userId: string): Promise<Invoice[]>;
+  getInvoicesByClientId(clientId: string): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
-  updateInvoice(id: number, invoice: Partial<Invoice>): Promise<Invoice | undefined>;
-  deleteInvoice(id: number): Promise<boolean>;
+  updateInvoice(id: string, invoice: Partial<Invoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: string): Promise<boolean>;
   
   // Invoice items operations
-  getInvoiceItem(id: number): Promise<InvoiceItem | undefined>;
+  getInvoiceItem(id: string): Promise<InvoiceItem | undefined>;
   getInvoiceItems(): Promise<InvoiceItem[]>;
-  getInvoiceItemsByInvoiceId(invoiceId: number): Promise<InvoiceItem[]>;
+  getInvoiceItemsByInvoiceId(invoiceId: string): Promise<InvoiceItem[]>;
   createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem>;
-  updateInvoiceItem(id: number, invoiceItem: Partial<InvoiceItem>): Promise<InvoiceItem | undefined>;
-  deleteInvoiceItem(id: number): Promise<boolean>;
+  updateInvoiceItem(id: string, invoiceItem: Partial<InvoiceItem>): Promise<InvoiceItem | undefined>;
+  deleteInvoiceItem(id: string): Promise<boolean>;
   
   // Reminder operations
-  getReminder(id: number): Promise<Reminder | undefined>;
-  getRemindersByUserId(userId: number): Promise<Reminder[]>;
-  getRemindersByInvoiceId(invoiceId: number): Promise<Reminder[]>;
+  getReminder(id: string): Promise<Reminder | undefined>;
+  getRemindersByUserId(userId: string): Promise<Reminder[]>;
+  getRemindersByInvoiceId(invoiceId: string): Promise<Reminder[]>;
   createReminder(reminder: InsertReminder): Promise<Reminder>;
-  updateReminder(id: number, reminder: Partial<Reminder>): Promise<Reminder | undefined>;
-  deleteReminder(id: number): Promise<boolean>;
+  updateReminder(id: string, reminder: Partial<Reminder>): Promise<Reminder | undefined>;
+  deleteReminder(id: string): Promise<boolean>;
 
   // Analytics operations
-  getTotalRevenue(userId: number): Promise<number>;
-  getOutstandingAmount(userId: number): Promise<number>;
-  getActiveClientsCount(userId: number): Promise<number>;
-  getItemsInStockCount(userId: number): Promise<number>;
-  getRevenueByMonth(userId: number, year: number): Promise<{month: number, revenue: number}[]>;
-  getInvoiceStatusSummary(userId: number): Promise<{status: string, count: number}[]>;
-  getTopClients(userId: number, limit: number): Promise<any[]>;
+  getTotalRevenue(userId: string): Promise<number>;
+  getOutstandingAmount(userId: string): Promise<number>;
+  getActiveClientsCount(userId: string): Promise<number>;
+  getItemsInStockCount(userId: string): Promise<number>;
+  getRevenueByMonth(userId: string, year: number): Promise<{month: number, revenue: number}[]>;
+  getInvoiceStatusSummary(userId: string): Promise<{status: string, count: number}[]>;
+  getTopClients(userId: string, limit: number): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private clients: Map<number, Client>;
-  private items: Map<number, Item>;
-  private invoices: Map<number, Invoice>;
-  private invoiceItems: Map<number, InvoiceItem>;
-  private reminders: Map<number, Reminder>;
-  
-  private userIdCounter: number;
-  private clientIdCounter: number;
-  private itemIdCounter: number;
-  private invoiceIdCounter: number;
-  private invoiceItemIdCounter: number;
-  private reminderIdCounter: number;
+  private users: Map<string, User>;
+  private clients: Map<string, Client>;
+  private items: Map<string, Item>;
+  private invoices: Map<string, Invoice>;
+  private invoiceItems: Map<string, InvoiceItem>;
+  private reminders: Map<string, Reminder>;
   
   constructor() {
     this.users = new Map();
@@ -86,29 +79,9 @@ export class MemStorage implements IStorage {
     this.invoices = new Map();
     this.invoiceItems = new Map();
     this.reminders = new Map();
-    
-    this.userIdCounter = 1;
-    this.clientIdCounter = 1;
-    this.itemIdCounter = 1;
-    this.invoiceIdCounter = 1;
-    this.invoiceItemIdCounter = 1;
-    this.reminderIdCounter = 1;
-
-    // Add a default admin user
-    this.createUser({
-      email: 'admin@invoiaiqpro.com',
-      password: 'password123',
-      name: 'Administrator',
-      role: 'admin',
-      status: 'active',
-      company: 'invoiaiqpro Inc.'
-    });
-
-    // Add some sample data for the admin user
-    this.setupSampleData(1);
   }
 
-  private async setupSampleData(userId: number) {
+  private async setupSampleData(userId: string) {
     // Create some clients
     const client1 = await this.createClient({
       userId,
@@ -345,7 +318,7 @@ export class MemStorage implements IStorage {
   }
 
   // User operations
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
 
@@ -364,7 +337,7 @@ export class MemStorage implements IStorage {
       }
       
       const newUser: User = {
-        id: this.userIdCounter++,
+        id: user.id,
         email: user.email,
         password: user.password,
         name: user.name,
@@ -384,7 +357,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+  async updateUser(id: string, userData: Partial<User>): Promise<User | undefined> {
     const user = await this.getUser(id);
     if (!user) return undefined;
     
@@ -394,11 +367,11 @@ export class MemStorage implements IStorage {
   }
 
   // Client operations
-  async getClient(id: number): Promise<Client | undefined> {
+  async getClient(id: string): Promise<Client | undefined> {
     return this.clients.get(id);
   }
 
-  async getClientsByUserId(userId: number): Promise<Client[]> {
+  async getClientsByUserId(userId: string): Promise<Client[]> {
     return Array.from(this.clients.values()).filter(client => client.userId === userId);
   }
 
@@ -407,7 +380,7 @@ export class MemStorage implements IStorage {
       this.validateClient(client);
       
       const newClient: Client = {
-        id: this.clientIdCounter++,
+        id: client.id,
         userId: client.userId,
         name: client.name,
         email: client.email,
@@ -426,7 +399,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateClient(id: number, clientData: Partial<Client>): Promise<Client | undefined> {
+  async updateClient(id: string, clientData: Partial<Client>): Promise<Client | undefined> {
     const client = await this.getClient(id);
     if (!client) return undefined;
     
@@ -435,16 +408,16 @@ export class MemStorage implements IStorage {
     return updatedClient;
   }
 
-  async deleteClient(id: number): Promise<boolean> {
+  async deleteClient(id: string): Promise<boolean> {
     return this.clients.delete(id);
   }
 
   // Item operations
-  async getItem(id: number): Promise<Item | undefined> {
+  async getItem(id: string): Promise<Item | undefined> {
     return this.items.get(id);
   }
 
-  async getItemsByUserId(userId: number): Promise<Item[]> {
+  async getItemsByUserId(userId: string): Promise<Item[]> {
     return Array.from(this.items.values()).filter(item => item.userId === userId);
   }
 
@@ -453,7 +426,7 @@ export class MemStorage implements IStorage {
       this.validateItem(item);
       
       const newItem: Item = {
-        id: this.itemIdCounter++,
+        id: item.id,
         userId: item.userId,
         name: item.name,
         description: item.description || null,
@@ -472,7 +445,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateItem(id: number, itemData: Partial<Item>): Promise<Item | undefined> {
+  async updateItem(id: string, itemData: Partial<Item>): Promise<Item | undefined> {
     const item = await this.getItem(id);
     if (!item) return undefined;
     
@@ -481,12 +454,12 @@ export class MemStorage implements IStorage {
     return updatedItem;
   }
 
-  async deleteItem(id: number): Promise<boolean> {
+  async deleteItem(id: string): Promise<boolean> {
     return this.items.delete(id);
   }
 
   // Invoice operations
-  async getInvoice(id: number): Promise<Invoice | undefined> {
+  async getInvoice(id: string): Promise<Invoice | undefined> {
     return this.invoices.get(id);
   }
   
@@ -494,11 +467,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.invoices.values());
   }
 
-  async getInvoicesByUserId(userId: number): Promise<Invoice[]> {
+  async getInvoicesByUserId(userId: string): Promise<Invoice[]> {
     return Array.from(this.invoices.values()).filter(invoice => invoice.userId === userId);
   }
 
-  async getInvoicesByClientId(clientId: number): Promise<Invoice[]> {
+  async getInvoicesByClientId(clientId: string): Promise<Invoice[]> {
     return Array.from(this.invoices.values()).filter(invoice => invoice.clientId === clientId);
   }
 
@@ -507,7 +480,7 @@ export class MemStorage implements IStorage {
       await this.validateInvoice(invoice);
       
       const newInvoice: Invoice = {
-        id: this.invoiceIdCounter++,
+        id: invoice.id,
         userId: invoice.userId,
         clientId: invoice.clientId,
         invoiceNumber: invoice.invoiceNumber,
@@ -533,7 +506,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateInvoice(id: number, invoiceData: Partial<Invoice>): Promise<Invoice | undefined> {
+  async updateInvoice(id: string, invoiceData: Partial<Invoice>): Promise<Invoice | undefined> {
     const invoice = await this.getInvoice(id);
     if (!invoice) return undefined;
     
@@ -542,7 +515,7 @@ export class MemStorage implements IStorage {
     return updatedInvoice;
   }
 
-  async deleteInvoice(id: number): Promise<boolean> {
+  async deleteInvoice(id: string): Promise<boolean> {
     // Delete related invoice items first
     const invoiceItems = await this.getInvoiceItemsByInvoiceId(id);
     invoiceItems.forEach(item => this.deleteInvoiceItem(item.id));
@@ -555,7 +528,7 @@ export class MemStorage implements IStorage {
   }
 
   // Invoice items operations
-  async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
+  async getInvoiceItem(id: string): Promise<InvoiceItem | undefined> {
     return this.invoiceItems.get(id);
   }
   
@@ -563,14 +536,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.invoiceItems.values());
   }
 
-  async getInvoiceItemsByInvoiceId(invoiceId: number): Promise<InvoiceItem[]> {
+  async getInvoiceItemsByInvoiceId(invoiceId: string): Promise<InvoiceItem[]> {
     return Array.from(this.invoiceItems.values()).filter(item => item.invoiceId === invoiceId);
   }
 
   async createInvoiceItem(invoiceItem: InsertInvoiceItem): Promise<InvoiceItem> {
     try {
       const newInvoiceItem: InvoiceItem = {
-        id: this.invoiceItemIdCounter++,
+        id: invoiceItem.id,
         invoiceId: invoiceItem.invoiceId,
         itemId: invoiceItem.itemId || null,
         description: invoiceItem.description,
@@ -587,7 +560,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateInvoiceItem(id: number, itemData: Partial<InvoiceItem>): Promise<InvoiceItem | undefined> {
+  async updateInvoiceItem(id: string, itemData: Partial<InvoiceItem>): Promise<InvoiceItem | undefined> {
     const invoiceItem = await this.getInvoiceItem(id);
     if (!invoiceItem) return undefined;
     
@@ -596,27 +569,27 @@ export class MemStorage implements IStorage {
     return updatedInvoiceItem;
   }
 
-  async deleteInvoiceItem(id: number): Promise<boolean> {
+  async deleteInvoiceItem(id: string): Promise<boolean> {
     return this.invoiceItems.delete(id);
   }
 
   // Reminder operations
-  async getReminder(id: number): Promise<Reminder | undefined> {
+  async getReminder(id: string): Promise<Reminder | undefined> {
     return this.reminders.get(id);
   }
 
-  async getRemindersByUserId(userId: number): Promise<Reminder[]> {
+  async getRemindersByUserId(userId: string): Promise<Reminder[]> {
     return Array.from(this.reminders.values()).filter(reminder => reminder.userId === userId);
   }
 
-  async getRemindersByInvoiceId(invoiceId: number): Promise<Reminder[]> {
+  async getRemindersByInvoiceId(invoiceId: string): Promise<Reminder[]> {
     return Array.from(this.reminders.values()).filter(reminder => reminder.invoiceId === invoiceId);
   }
 
   async createReminder(reminder: InsertReminder): Promise<Reminder> {
     try {
       const newReminder: Reminder = {
-        id: this.reminderIdCounter++,
+        id: reminder.id,
         userId: reminder.userId,
         invoiceId: reminder.invoiceId || null,
         title: reminder.title,
@@ -634,7 +607,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateReminder(id: number, reminderData: Partial<Reminder>): Promise<Reminder | undefined> {
+  async updateReminder(id: string, reminderData: Partial<Reminder>): Promise<Reminder | undefined> {
     const reminder = await this.getReminder(id);
     if (!reminder) return undefined;
     
@@ -643,38 +616,38 @@ export class MemStorage implements IStorage {
     return updatedReminder;
   }
 
-  async deleteReminder(id: number): Promise<boolean> {
+  async deleteReminder(id: string): Promise<boolean> {
     return this.reminders.delete(id);
   }
 
   // Analytics operations
-  async getTotalRevenue(userId: number): Promise<number> {
+  async getTotalRevenue(userId: string): Promise<number> {
     const userInvoices = await this.getInvoicesByUserId(userId);
     return userInvoices
       .filter(invoice => invoice.status === 'paid')
       .reduce((sum, invoice) => sum + invoice.total, 0);
   }
 
-  async getOutstandingAmount(userId: number): Promise<number> {
+  async getOutstandingAmount(userId: string): Promise<number> {
     const userInvoices = await this.getInvoicesByUserId(userId);
     return userInvoices
       .filter(invoice => invoice.status === 'sent' || invoice.status === 'overdue')
       .reduce((sum, invoice) => sum + invoice.total, 0);
   }
 
-  async getActiveClientsCount(userId: number): Promise<number> {
+  async getActiveClientsCount(userId: string): Promise<number> {
     const userClients = await this.getClientsByUserId(userId);
     return userClients.length;
   }
 
-  async getItemsInStockCount(userId: number): Promise<number> {
+  async getItemsInStockCount(userId: string): Promise<number> {
     const userItems = await this.getItemsByUserId(userId);
     return userItems
       .filter(item => item.isInventory)
       .reduce((sum, item) => sum + (item.stockQuantity || 0), 0);
   }
 
-  async getRevenueByMonth(userId: number, year: number): Promise<{month: number, revenue: number}[]> {
+  async getRevenueByMonth(userId: string, year: number): Promise<{month: number, revenue: number}[]> {
     const userInvoices = await this.getInvoicesByUserId(userId);
     
     // Initialize revenue for all months
@@ -697,7 +670,7 @@ export class MemStorage implements IStorage {
     return monthlyRevenue;
   }
 
-  async getInvoiceStatusSummary(userId: number): Promise<{status: string, count: number}[]> {
+  async getInvoiceStatusSummary(userId: string): Promise<{status: string, count: number}[]> {
     const userInvoices = await this.getInvoicesByUserId(userId);
     
     // Count invoices by status
@@ -714,7 +687,7 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  async getTopClients(userId: number, limit: number): Promise<any[]> {
+  async getTopClients(userId: string, limit: number): Promise<any[]> {
     const userClients = await this.getClientsByUserId(userId);
     const result = [];
     

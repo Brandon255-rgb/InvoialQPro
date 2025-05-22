@@ -1,0 +1,143 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+🎯 Cursor Design System – Tailwind Rule Set
+Purpose: Crisp, dark-first UI for professional-grade dashboards and tools
+Philosophy: Fewer colours. Tight rhythm. Brutal hierarchy. Clean focus.
+
+🖤 BASE COLOURS
+ts
+Copy
+Edit
+// tailwind.config.js (simplified)
+colors: {
+  background: '#0F0F10',   // Dark canvas
+  surface: '#1A1A1E',      // Elevated surfaces
+  border: '#2C2C30',       // Dividers and outlines
+  primary: '#7F5AF0',      // Action purple
+  accent: '#FF8906',       // Highlight orange
+  success: '#2CB67D',      // Confirmative
+  warning: '#F0A202',      // Attention
+  danger: '#EF4565',       // Destructive
+  text: '#E5E7EB',         // Default text
+  muted: '#94A1B2',        // Secondary text
+  white: '#FFFFFF',
+}
+Usage Rules:
+
+text: Default body text
+
+muted: Captions, metadata
+
+surface: Cards, modals
+
+border: Stroke and divider lines
+
+primary: Buttons, links, CTAs
+
+📐 SPACING SYSTEM
+ts
+Copy
+Edit
+spacing: {
+  'xs': '4px',
+  'sm': '8px',
+  'md': '12px',
+  'lg': '16px',
+  'xl': '24px',
+  '2xl': '32px',
+}
+Rules:
+
+Use p-4, p-6, gap-4 etc.
+
+rounded-xl is the default card radius.
+
+gap-x-6 between columns, gap-y-4 between rows.
+
+space-y-4 for vertical lists.
+
+🔠 TYPOGRAPHY
+ts
+Copy
+Edit
+fontFamily: {
+  sans: ['Inter', 'system-ui', 'sans-serif'],
+  mono: ['JetBrains Mono', 'monospace'],
+}
+Style	Class Example
+Headline	text-2xl font-semibold tracking-tight
+Title	text-xl font-medium
+Body	text-base leading-relaxed
+Small text	text-sm text-muted
+
+Rules:
+
+All text is left-aligned.
+
+Headings don’t use all-caps.
+
+Only use bold to imply true semantic weight.
+
+🧱 COMPONENT PRIMITIVES
+✅ Buttons
+html
+Copy
+Edit
+<button class="bg-primary text-white rounded-lg px-4 py-2 text-sm hover:bg-primary/90 transition">
+  Save
+</button>
+Use rounded-lg, no shadows.
+
+Avoid gradients, use bg-opacity instead.
+
+📦 Card
+html
+Copy
+Edit
+<div class="bg-surface border border-border rounded-xl p-6">
+  <h2 class="text-xl text-white font-semibold mb-2">Invoices</h2>
+  <p class="text-muted text-sm">Last 30 days</p>
+</div>
+📊 Sidebar
+html
+Copy
+Edit
+<aside class="w-64 h-screen bg-surface border-r border-border p-6 space-y-4">
+  <div class="text-lg font-semibold text-white">InvoiaIQ</div>
+  <nav class="space-y-2">
+    <a class="block px-3 py-2 rounded-md text-muted hover:bg-border">Dashboard</a>
+    <a class="block px-3 py-2 rounded-md text-muted hover:bg-border">Invoices</a>
+  </nav>
+</aside>
+🌓 DARK MODE
+ts
+Copy
+Edit
+darkMode: 'class'
+Enforce dark by default.
+Add a dark class to <html> and only enable light mode via toggle.
+
+Use:
+
+html
+Copy
+Edit
+<div class="bg-background text-white dark:bg-white dark:text-black">
+🧪 INTERACTION RULES
+Transitions: Use transition, hover:, focus: — but no animations unless necessary.
+
+Shadows: shadow-none or shadow-sm only. Avoid heavy UI shadows.
+
+Focus States: Always outline-none focus:ring-2 focus:ring-primary.
+
+🧩 ACCESSIBLE DESIGN TIPS
+Maintain 4.5:1 contrast ratio.
+
+Add aria-* labels where needed.
+
+Prefer buttons/links with keyboard focus styles.
+
+

@@ -1,13 +1,14 @@
 import PDFDocument from 'pdfkit';
 import { Invoice, InvoiceItem, Client } from '@shared/schema';
-import { db } from '../db';
-import { companySettings } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { supabaseAdmin } from '../lib/supabase';
 import fs from 'fs';
 import path from 'path';
 
 interface GenerateInvoicePdfOptions {
-  invoice: Invoice;
+  invoice: Invoice & {
+    tax_rate: number;
+    tax_amount: number;
+  };
   items: InvoiceItem[];
   client: Client;
   company: {
@@ -34,11 +35,19 @@ export async function generateInvoicePdf({
       doc.on('error', reject);
 
       // Get company settings for logo
-      const [settings] = await db.select().from(companySettings).where(eq(companySettings.userId, invoice.userId));
+      const { data: settings, error: settingsError } = await supabaseAdmin
+        .from('company_settings')
+        .select('*')
+        .eq('user_id', invoice.userId)
+        .single();
+
+      if (settingsError) {
+        console.error('Error fetching company settings:', settingsError);
+      }
       
       // Add logo if exists
-      if (settings?.logoPath) {
-        const logoPath = path.join(process.cwd(), settings.logoPath);
+      if (settings?.logo_path) {
+        const logoPath = path.join(process.cwd(), settings.logo_path);
         if (fs.existsSync(logoPath)) {
           doc.image(logoPath, 50, 50, { width: 100 });
           doc.moveDown(2);
@@ -66,9 +75,9 @@ export async function generateInvoicePdf({
       doc.fontSize(12).text('Bill To:', { underline: true });
       doc.fontSize(10)
         .text(client.name)
-        .text(client.address)
+        .text(client.address || '')
         .text(`Email: ${client.email}`)
-        .text(`Phone: ${client.phone}`)
+        .text(`Phone: ${client.phone || ''}`)
         .moveDown();
 
       // Items Table
@@ -88,8 +97,8 @@ export async function generateInvoicePdf({
 
         doc.text(item.description, 50, y)
           .text(item.quantity.toString(), 200, y)
-          .text(`$${item.unitPrice.toFixed(2)}`, 300, y)
-          .text(`$${(item.quantity * item.unitPrice).toFixed(2)}`, 400, y);
+          .text(`$${item.price.toFixed(2)}`, 300, y)
+          .text(`$${item.total.toFixed(2)}`, 400, y);
         y += 20;
       });
 
@@ -99,7 +108,7 @@ export async function generateInvoicePdf({
         .text('Subtotal:', 300, totalsY)
         .text(`$${invoice.subtotal.toFixed(2)}`, 400, totalsY)
         .text('Tax:', 300, totalsY + 20)
-        .text(`$${invoice.tax.toFixed(2)}`, 400, totalsY)
+        .text(`$${invoice.tax_amount.toFixed(2)}`, 400, totalsY)
         .text('Total:', 300, totalsY + 40)
         .text(`$${invoice.total.toFixed(2)}`, 400, totalsY);
 
