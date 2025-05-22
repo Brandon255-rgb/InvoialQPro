@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 
 // Type definitions for your database tables
 export type Database = {
@@ -189,3 +191,66 @@ export const companySettingsSchema = z.object({
   email: z.string().nullable(),
   website: z.string().nullable(),
 });
+
+// Define your Drizzle table (for backend use) (for example, clients)
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  company: text("company").notNull(),
+  address: text("address").notNull(),
+  notes: text("notes").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// (Optional) Define a Zod schema (for frontend use) (for example, clientSchema) –– remove or comment out this block if it is duplicated
+// export const clientSchema = z.object({
+//   id: z.number().optional(),
+//   name: z.string().min(1, "Name is required"),
+//   email: z.string().email("Invalid email address"),
+//   phone: z.string().optional(),
+//   company: z.string().optional(),
+//   address: z.string().optional(),
+//   notes: z.string().optional(),
+// });
+
+// (Keep the export for insertClientSchema (using drizzle-zod) so that the frontend (ClientForm.tsx) can import it.)
+export const insertClientSchema = createInsertSchema(clients);
+
+/* (Insert a new Drizzle table definition for invoices (for backend use) so that drizzle-zod can generate insertInvoiceSchema.) */
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  user_id: text("user_id").notNull(),
+  client_id: text("client_id").notNull(),
+  invoice_number: text("invoice_number").notNull(),
+  status: text("status").notNull(),
+  issue_date: text("issue_date").notNull(),
+  due_date: text("due_date").notNull(),
+  subtotal: doublePrecision("subtotal").notNull(),
+  tax_rate: doublePrecision("tax_rate").notNull(),
+  tax_amount: doublePrecision("tax_amount").notNull(),
+  total: doublePrecision("total").notNull(),
+  notes: text("notes").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+/* (Insert a new export for insertInvoiceSchema (using drizzle-zod) so that InvoiceForm.tsx can import it.) */
+export const insertInvoiceSchema = createInsertSchema(invoices);
+
+/* (Insert a new Drizzle table definition for items (for backend use) so that drizzle-zod can generate insertItemSchema.) */
+export const items = pgTable("items", {
+  id: serial("id").primaryKey(),
+  user_id: text("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  price: doublePrecision("price").notNull(),
+  category: text("category").notNull(),
+  is_inventory: boolean("is_inventory").notNull(),
+  stock_quantity: integer("stock_quantity").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+/* (Insert a new export for insertItemSchema (using drizzle-zod) so that ItemForm.tsx can import it.) */
+export const insertItemSchema = createInsertSchema(items);
