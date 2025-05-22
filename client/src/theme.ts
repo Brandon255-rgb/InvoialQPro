@@ -2,19 +2,40 @@ import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#2563eb',
+      main: '#7F5AF0',
     },
     secondary: {
-      main: '#7c3aed',
+      main: '#FF8906',
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: '#0F0F10',
+      paper: '#1A1A1E',
     },
+    text: {
+      primary: '#E5E7EB',
+      secondary: '#94A1B2',
+    },
+    success: {
+      main: '#2CB67D',
+    },
+    warning: {
+      main: '#F0A202',
+    },
+    error: {
+      main: '#EF4565',
+    },
+    info: {
+      main: '#2563eb',
+    },
+    divider: '#2C2C30',
   },
   typography: {
-    fontFamily: '"Inter", "Helvetica", "Arial", sans-serif',
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+  shape: {
+    borderRadius: 16,
   },
   components: {
     MuiButton: {

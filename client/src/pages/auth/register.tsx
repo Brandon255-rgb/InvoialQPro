@@ -43,6 +43,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [redirectAfterToast, setRedirectAfterToast] = useState(false);
+  const [successEmail, setSuccessEmail] = useState<string | null>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -68,12 +69,24 @@ export default function Register() {
           },
         },
       });
+      console.log('Supabase signUp authData:', authData);
+      console.log('Supabase signUp authError:', authError);
 
       if (authError) {
+        toast({
+          title: "Registration failed",
+          description: authError.message || "An error occurred during registration.",
+          variant: "destructive",
+        });
         throw authError;
       }
 
       if (!authData.user) {
+        toast({
+          title: "Registration failed",
+          description: "No user data returned from Supabase.",
+          variant: "destructive",
+        });
         throw new Error("No user data returned");
       }
 
@@ -99,11 +112,12 @@ export default function Register() {
         });
       }
 
+      setSuccessEmail(data.email);
       toast({
-        title: "Registration successful",
-        description: "Please check your email to verify your account.",
+        title: "User created successfully!",
+        description: "You can now log in with your credentials.",
         action: {
-          label: "OK",
+          label: "Go to Login",
           onClick: () => setRedirectAfterToast(true),
         },
       });
@@ -111,7 +125,7 @@ export default function Register() {
       console.error("Registration error:", error);
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred during registration",
+        description: error instanceof Error ? error.message : JSON.stringify(error),
         variant: "destructive",
       });
     } finally {
@@ -120,10 +134,10 @@ export default function Register() {
   };
 
   React.useEffect(() => {
-    if (redirectAfterToast) {
-      navigate("/login");
+    if (redirectAfterToast && successEmail) {
+      navigate(`/login?email=${encodeURIComponent(successEmail)}`);
     }
-  }, [redirectAfterToast, navigate]);
+  }, [redirectAfterToast, successEmail, navigate]);
 
   return (
     <AuthLayout

@@ -6,26 +6,8 @@ import RecentInvoices from '../components/dashboard/RecentInvoices';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import StatusChart from '../components/dashboard/StatusChart';
 import Loading from '../components/ui/Loading';
-import {
-  DocumentTextIcon,
-  CurrencyDollarIcon,
-  ClockIcon,
-  ExclamationCircleIcon,
-} from '@heroicons/react/24/outline';
 import { FiDollarSign, FiClock, FiAlertCircle } from 'react-icons/fi';
-
-interface Invoice {
-  id: number;
-  invoiceNumber: string;
-  total: number;
-  status: string;
-  issueDate: string;
-  client: {
-    id: number;
-    name: string;
-    company?: string;
-  };
-}
+import { Invoice } from '../types/invoice';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -52,20 +34,20 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const fetchInvoices = async () => {
+    const fetchInvoicesData = async () => {
       try {
         const response = await fetch('http://localhost:5001/api/invoices');
         if (!response.ok) {
           throw new Error('Failed to fetch invoices');
         }
-        const data = await response.json();
+        const data: Invoice[] = await response.json();
         setInvoices(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching invoices');
       }
     };
 
-    fetchInvoices();
+    fetchInvoicesData();
   }, []);
 
   if (isLoading) {
@@ -84,7 +66,7 @@ export default function Dashboard() {
   const pendingInvoices = invoices.filter(invoice => invoice.status === 'pending');
   const overdueInvoices = invoices.filter(invoice => invoice.status === 'overdue');
   const recentInvoices = [...invoices]
-    .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())
+    .sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime())
     .slice(0, 5);
 
   return (
@@ -92,7 +74,7 @@ export default function Dashboard() {
       <div className="bg-white shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg font-medium leading-6 text-gray-900">
-            Welcome back, {user?.name}
+            Welcome back, {user?.user_metadata?.name || user?.email || 'User'}
           </h3>
           <div className="mt-2 max-w-xl text-sm text-gray-500">
             <p>Here's what's happening with your invoices today.</p>
