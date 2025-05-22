@@ -2,10 +2,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import ItemsList from "@/components/items/ItemsList";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -18,6 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import ItemsList from "@/components/items/ItemsList";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 const Items = () => {
   const { user } = useAuth();
@@ -75,16 +74,8 @@ const Items = () => {
   );
 
   return (
-    <DashboardLayout
-      title="Items"
-      description="Manage your products and services"
-      actions={actions}
-    >
-      <ItemsList
-        items={items}
-        isLoading={isLoading}
-        onDeleteItem={handleDeleteItem}
-      />
+    <>
+      <ItemsList items={items} isLoading={isLoading} onDelete={handleDeleteItem} />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
@@ -107,7 +98,7 @@ const Items = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 };
 

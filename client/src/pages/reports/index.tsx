@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import DashboardLayout from "@/components/layouts/Dashboard";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { 
@@ -163,229 +162,55 @@ const Reports = () => {
 
   if (isLoading) {
     return (
-      <DashboardLayout 
-        title="Reports" 
-        description="Financial insights and analytics"
-        actions={actions}
-      >
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      </DashboardLayout>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout
-      title="Reports"
-      description="Financial insights and analytics"
-      actions={actions}
-    >
-      <div className="space-y-6">
-        {/* Year Filter */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-medium">Reports & Analytics</h2>
-            <p className="text-sm text-gray-500">Visualize your business performance</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Year:</span>
-            <Select
-              value={yearFilter}
-              onValueChange={(value) => setYearFilter(value)}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Select Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-6">
+      {/* Year Filter */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-medium">Reports & Analytics</h2>
+          <p className="text-sm text-gray-500">Visualize your business performance</p>
         </div>
-
-        {/* Revenue Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="monthly">
-              <TabsList className="mb-4">
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="monthly" className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={dashboardData?.monthlyRevenue || []}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis 
-                      dataKey={(entry) => {
-                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                        return months[entry.month - 1];
-                      }} 
-                    />
-                    <YAxis 
-                      tickFormatter={(value) => formatCurrency(value).replace('.00', '')} 
-                    />
-                    <Tooltip 
-                      formatter={(value: any) => [formatCurrency(value), 'Revenue']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Legend />
-                    <Bar 
-                      dataKey="revenue" 
-                      name="Revenue" 
-                      fill="#3b82f6" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </TabsContent>
-              
-              <TabsContent value="quarterly" className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={quarterlyData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" />
-                    <YAxis tickFormatter={(value) => formatCurrency(value).replace('.00', '')} />
-                    <Tooltip 
-                      formatter={(value: any) => [formatCurrency(value), 'Revenue']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Legend />
-                    <Bar 
-                      dataKey="value" 
-                      name="Revenue" 
-                      fill="#3b82f6" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* Invoice Stats and Client Distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Invoice Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Status Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={invoiceStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {invoiceStatusData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS] || "#9ca3af"} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: any) => [`${value} invoices`, 'Count']}
-                      labelFormatter={(name) => `${name}`}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {invoiceStatusData.map((item, index) => (
-                  <div key={index} className="flex items-center">
-                    <span 
-                      className="inline-block h-3 w-3 rounded-full mr-2"
-                      style={{ backgroundColor: STATUS_COLORS[item.name as keyof typeof STATUS_COLORS] || "#9ca3af" }}
-                    ></span>
-                    <span className="text-sm">{item.name}: {item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Top Clients */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Clients by Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={topClientsData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name.slice(0, 10)}${name.length > 10 ? '...' : ''} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {topClientsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: any) => [formatCurrency(value), 'Revenue']}
-                      labelFormatter={(name) => `${name}`}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="mt-4 space-y-2">
-                {topClientsData.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <span 
-                        className="inline-block h-3 w-3 rounded-full mr-2"
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      ></span>
-                      <span className="text-sm">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-medium">{formatCurrency(item.value)}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-gray-700">Year:</span>
+          <Select
+            value={yearFilter}
+            onValueChange={(value) => setYearFilter(value)}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        
-        {/* Monthly Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Performance Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+      </div>
+
+      {/* Revenue Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Revenue Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="monthly">
+            <TabsList className="mb-4">
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="monthly" className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <BarChart
                   data={dashboardData?.monthlyRevenue || []}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
@@ -404,29 +229,191 @@ const Reports = () => {
                     labelFormatter={(label) => `${label}`}
                   />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    name="Revenue"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
+                  <Bar 
+                    dataKey="revenue" 
+                    name="Revenue" 
+                    fill="#3b82f6" 
+                    radius={[4, 4, 0, 0]}
                   />
-                </LineChart>
+                </BarChart>
               </ResponsiveContainer>
+            </TabsContent>
+            
+            <TabsContent value="quarterly" className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={quarterlyData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => formatCurrency(value).replace('.00', '')} />
+                  <Tooltip 
+                    formatter={(value: any) => [formatCurrency(value), 'Revenue']}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="value" 
+                    name="Revenue" 
+                    fill="#3b82f6" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Invoice Stats and Client Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Invoice Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={invoiceStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {invoiceStatusData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS] || "#9ca3af"} 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: any) => [`${value} invoices`, 'Count']}
+                    labelFormatter={(name) => `${name}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {invoiceStatusData.map((item, index) => (
+                <div key={index} className="flex items-center">
+                  <span 
+                    className="inline-block h-3 w-3 rounded-full mr-2"
+                    style={{ backgroundColor: STATUS_COLORS[item.name as keyof typeof STATUS_COLORS] || "#9ca3af" }}
+                  ></span>
+                  <span className="text-sm">{item.name}: {item.value}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
         
-        {/* Coming Soon Features */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Advanced Analytics Coming Soon</h3>
-          <p className="text-gray-600 mb-4">We're working on adding more powerful reporting features like export options, custom date ranges, and detailed client analytics.</p>
-          <Button variant="outline">Request a Feature</Button>
-        </div>
+        {/* Top Clients */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Clients by Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={topClientsData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name.slice(0, 10)}${name.length > 10 ? '...' : ''} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {topClientsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: any) => [formatCurrency(value), 'Revenue']}
+                    labelFormatter={(name) => `${name}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-4 space-y-2">
+              {topClientsData.map((item, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <span 
+                      className="inline-block h-3 w-3 rounded-full mr-2"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    ></span>
+                    <span className="text-sm">{item.name}</span>
+                  </div>
+                  <span className="text-sm font-medium">{formatCurrency(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </DashboardLayout>
+      
+      {/* Monthly Trend */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Performance Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={dashboardData?.monthlyRevenue || []}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey={(entry) => {
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return months[entry.month - 1];
+                  }} 
+                />
+                <YAxis 
+                  tickFormatter={(value) => formatCurrency(value).replace('.00', '')} 
+                />
+                <Tooltip 
+                  formatter={(value: any) => [formatCurrency(value), 'Revenue']}
+                  labelFormatter={(label) => `${label}`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Coming Soon Features */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Advanced Analytics Coming Soon</h3>
+        <p className="text-gray-600 mb-4">We're working on adding more powerful reporting features like export options, custom date ranges, and detailed client analytics.</p>
+        <Button variant="outline">Request a Feature</Button>
+      </div>
+    </div>
   );
 };
 

@@ -2,10 +2,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import ClientsList from "@/components/clients/ClientsList";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -18,6 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import ClientsList from "@/components/clients/ClientsList";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 const Clients = () => {
   const { user } = useAuth();
@@ -75,16 +74,8 @@ const Clients = () => {
   );
 
   return (
-    <DashboardLayout
-      title="Clients"
-      description="Manage your client database"
-      actions={actions}
-    >
-      <ClientsList
-        clients={clients}
-        isLoading={isLoading}
-        onDeleteClient={handleDeleteClient}
-      />
+    <>
+      <ClientsList clients={clients} isLoading={isLoading} onDelete={handleDeleteClient} />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
@@ -107,7 +98,7 @@ const Clients = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 };
 

@@ -3,10 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import ItemForm from "@/components/items/ItemForm";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Trash2, Package, ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -22,6 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Edit, Trash2, Package, ShoppingCart } from "lucide-react";
+import ItemForm from "@/components/items/ItemForm";
 
 const ItemDetail = () => {
   const { user } = useAuth();
@@ -121,67 +120,31 @@ const ItemDetail = () => {
 
   const itemInvoices = getItemInvoices();
 
-  // Action buttons for the layout
-  const actions = (
-    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-      <Link href="/items">
-        <Button variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Items
-        </Button>
-      </Link>
-      
-      {!isEditMode && (
-        <>
-          <Button onClick={() => setIsEditMode(true)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Item
-          </Button>
-          <Button 
-            variant="outline" 
-            className="text-danger hover:bg-danger/10" 
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Item
-          </Button>
-        </>
-      )}
-    </div>
-  );
-
   if (isItemLoading) {
     return (
-      <DashboardLayout title="Item Details" description="Loading item information...">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      </DashboardLayout>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
   if (!item) {
     return (
-      <DashboardLayout title="Item Not Found" description="The requested item could not be found">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <p className="text-red-700">This item may have been deleted or you don't have permission to view it.</p>
-          <Link href="/items">
-            <Button variant="outline" className="mt-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Items
-            </Button>
-          </Link>
-        </div>
-      </DashboardLayout>
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+        <p className="text-red-700">This item may have been deleted or you don't have permission to view it.</p>
+        <Link href="/items">
+          <Button variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Items
+          </Button>
+        </Link>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout
-      title={isEditMode ? "Edit Item" : item.name}
-      description={isEditMode ? "Edit item information" : (item.category || "Item details")}
-      actions={actions}
-    >
+    <>
+      {/* Item detail content, forms, dialogs, etc. */}
       {isEditMode ? (
         <div className="bg-white shadow-sm rounded-lg p-6">
           <ItemForm
@@ -440,7 +403,7 @@ const ItemDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 };
 

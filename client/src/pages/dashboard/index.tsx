@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import StatsCard from "@/components/dashboard/StatsCard";
-import RevenueChart from "@/components/dashboard/RevenueChart";
-import InvoiceStatus from "@/components/dashboard/InvoiceStatus";
-import RecentInvoices from "@/components/dashboard/RecentInvoices";
-import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
-import TopClients from "@/components/dashboard/TopClients";
-import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 import { 
   Download, 
@@ -33,6 +25,13 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/supabase';
+import StatsCard from "@/components/dashboard/StatsCard";
+import RevenueChart from "@/components/dashboard/RevenueChart";
+import InvoiceStatus from "@/components/dashboard/InvoiceStatus";
+import RecentInvoices from "@/components/dashboard/RecentInvoices";
+import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
+import TopClients from "@/components/dashboard/TopClients";
+import { Button } from "@/components/ui/button";
 
 const reminderFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -138,39 +137,27 @@ const Dashboard = () => {
   
   if (isLoading) {
     return (
-      <DashboardLayout 
-        title="Dashboard" 
-        description="Loading dashboard data..."
-        actions={DashboardActions}
-      >
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      </DashboardLayout>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
   
   if (!dashboardData) {
     return (
-      <DashboardLayout 
-        title="Dashboard" 
-        description="Failed to load dashboard data"
-        actions={DashboardActions}
-      >
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <CircleAlert className="h-5 w-5 text-red-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error loading dashboard data</h3>
-              <div className="mt-2 text-sm text-red-700">
-                <p>There was an error loading your dashboard data. Please try refreshing the page.</p>
-              </div>
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <CircleAlert className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading dashboard data</h3>
+            <div className="mt-2 text-sm text-red-700">
+              <p>There was an error loading your dashboard data. Please try refreshing the page.</p>
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
   
@@ -184,11 +171,7 @@ const Dashboard = () => {
   } = dashboardData;
   
   return (
-    <DashboardLayout 
-      title="Dashboard" 
-      description="Overview of your business finances and activity"
-      actions={DashboardActions}
-    >
+    <>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatsCard
@@ -319,7 +302,7 @@ const Dashboard = () => {
           </Form>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 };
 
