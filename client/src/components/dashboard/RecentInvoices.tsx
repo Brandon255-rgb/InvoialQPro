@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from 'react-router-dom';
+import { Link } from 'wouter';
 import { formatCurrency, getInitials, getStatusColor } from "@/lib/utils";
 import { format } from 'date-fns';
 import { Invoice } from '../../types/invoice';
@@ -59,9 +59,9 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
                 {invoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
-                      <Link to={`/invoices/${invoice.id}`} className="hover:text-blue-600">
+                      <Link href={`/invoices/${invoice.id}`}><a>
                         #{invoice.invoice_number}
-                      </Link>
+                      </a></Link>
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                       {invoice.client.company || invoice.client.name}

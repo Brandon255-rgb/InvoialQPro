@@ -42,17 +42,27 @@ const Login = () => {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
+    // Bypass backend for dev credentials
+    if (data.email === "brandon.vanvuuren60@gmail.com" && data.password === "admin123") {
+      sessionStorage.setItem("token", "dev-fake-token");
+      setLocation("/dashboard");
+      toast({
+        title: "Login successful (dev mode)",
+        description: "Welcome, brandon.vanvuuren60@gmail.com!",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await login(data.email, data.password);
       setLocation("/dashboard");
-      
       toast({
         title: "Login successful",
         description: "Welcome back to invoiaiqpro!",
       });
     } catch (error) {
       console.error("Login error:", error);
-      
       toast({
         title: "Login failed",
         description: "Invalid email or password",
@@ -65,25 +75,24 @@ const Login = () => {
 
   return (
     <AuthLayout 
-      title="Sign in to your account" 
-      subtitle="Enter your email below to access your invoices and analytics"
+      title="Sign in" 
       type="login"
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Email address</FormLabel>
+                <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="johndoe@example.com"
+                    placeholder="Enter your email"
                     type="email"
                     autoComplete="email"
                     required
-                    className="h-11 bg-gray-50 border-gray-200 focus:border-primary-500 focus:ring-primary-500"
+                    className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
                     {...field}
                   />
                 </FormControl>
@@ -101,18 +110,18 @@ const Login = () => {
                   <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
                   <a
                     href="#"
-                    className="text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors"
+                    className="text-sm font-medium text-purple-600 hover:text-purple-500 transition-colors"
                   >
-                    Forgot password?
+                    Forgot?
                   </a>
                 </div>
                 <FormControl>
                   <Input
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     type="password"
                     autoComplete="current-password"
                     required
-                    className="h-11 bg-gray-50 border-gray-200 focus:border-primary-500 focus:ring-primary-500"
+                    className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
                     {...field}
                   />
                 </FormControl>
@@ -121,10 +130,10 @@ const Login = () => {
             )}
           />
 
-          <div>
+          <div className="pt-2">
             <Button 
               type="submit" 
-              className="w-full h-11 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" 
+              className="w-full h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500" 
               disabled={isLoading}
             >
               {isLoading ? (
@@ -136,20 +145,6 @@ const Login = () => {
                 "Sign in"
               )}
             </Button>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 text-center text-sm">
-            <span className="text-gray-500">
-              For demonstration purposes, use:
-            </span>
-            <div className="mt-2 space-y-1">
-              <div className="text-gray-600 font-medium">
-                Email: admin@invoiaiqpro.com
-              </div>
-              <div className="text-gray-600 font-medium">
-                Password: password123
-              </div>
-            </div>
           </div>
         </form>
       </Form>

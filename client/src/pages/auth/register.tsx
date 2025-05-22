@@ -29,8 +29,6 @@ const registerSchema = z.object({
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   company: z.string().min(1, "Company name is required"),
-  phone: z.string().optional(),
-  address: z.string().optional(),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -49,8 +47,6 @@ const Register = () => {
       email: "",
       password: "",
       company: "",
-      phone: "",
-      address: "",
     },
   });
 
@@ -69,8 +65,6 @@ const Register = () => {
         },
         body: JSON.stringify({
           company: data.company,
-          phone: data.phone,
-          address: data.address,
         }),
       });
 
@@ -120,35 +114,31 @@ const Register = () => {
 
   return (
     <AuthLayout 
-      title="Create your account" 
-      subtitle="Start managing your invoices and finances today"
+      title="Register" 
       type="register"
     >
       <Form {...form}>
         <motion.form 
           onSubmit={form.handleSubmit(onSubmit)} 
-          className="space-y-6"
+          className="space-y-4"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <motion.div className="space-y-6" variants={itemVariants}>
+          <div className="grid grid-cols-1 gap-4">
+            <motion.div variants={itemVariants}>
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Full Name
-                    </FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Full Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="John Doe"
+                        placeholder="Enter your name"
                         autoComplete="name"
                         required
-                        className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200"
+                        className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
                         {...field}
                       />
                     </FormControl>
@@ -156,23 +146,22 @@ const Register = () => {
                   </FormItem>
                 )}
               />
+            </motion.div>
 
+            <motion.div variants={itemVariants}>
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Email address
-                    </FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="johndoe@example.com"
+                        placeholder="Enter your email"
                         type="email"
                         autoComplete="email"
                         required
-                        className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200"
+                        className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
                         {...field}
                       />
                     </FormControl>
@@ -180,24 +169,23 @@ const Register = () => {
                   </FormItem>
                 )}
               />
+            </motion.div>
 
+            <motion.div variants={itemVariants}>
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Password
-                    </FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
-                          placeholder="••••••••"
+                          placeholder="Create a password"
                           type={showPassword ? "text" : "password"}
                           autoComplete="new-password"
                           required
-                          className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200 pr-10"
+                          className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500 pr-10"
                           {...field}
                         />
                         <button
@@ -213,7 +201,7 @@ const Register = () => {
                         </button>
                       </div>
                     </FormControl>
-                    <FormDescription className="text-sm text-gray-500">
+                    <FormDescription className="text-xs text-gray-500">
                       Must be at least 8 characters with uppercase, lowercase, and numbers
                     </FormDescription>
                     <FormMessage className="text-sm" />
@@ -222,67 +210,19 @@ const Register = () => {
               />
             </motion.div>
 
-            <motion.div className="space-y-6" variants={itemVariants}>
+            <motion.div variants={itemVariants}>
               <FormField
                 control={form.control}
                 name="company"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Company Name
-                    </FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Company Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Acme Inc."
+                        placeholder="Enter company name"
                         autoComplete="organization"
                         required
-                        className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-sm" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Phone Number (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="(123) 456-7890"
-                        type="tel"
-                        autoComplete="tel"
-                        className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-sm" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Address (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="123 Business St"
-                        autoComplete="street-address"
-                        className="h-11 bg-gray-50/50 border-gray-200 focus:border-primary-500 focus:ring-primary-500 transition-all duration-200"
+                        className="h-10 bg-white/50 border-purple-200 focus:border-purple-500 focus:ring-purple-500"
                         {...field}
                       />
                     </FormControl>
@@ -293,37 +233,21 @@ const Register = () => {
             </motion.div>
           </div>
 
-          <motion.div variants={itemVariants}>
+          <motion.div variants={itemVariants} className="pt-2">
             <Button 
               type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
+              className="w-full h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500" 
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating account...
                 </>
               ) : (
                 "Create account"
               )}
             </Button>
-          </motion.div>
-
-          <motion.div 
-            variants={itemVariants}
-            className="bg-gray-50/50 rounded-xl p-4 text-center text-sm border border-gray-100"
-          >
-            <p className="text-gray-600">
-              By creating an account, you agree to our{" "}
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
-                Privacy Policy
-              </a>
-            </p>
           </motion.div>
         </motion.form>
       </Form>

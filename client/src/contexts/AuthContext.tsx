@@ -73,6 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const devToken = sessionStorage.getItem('token');
+      if (devToken === 'dev-fake-token') {
+        setUser({
+          id: 'dev',
+          email: 'brandon.vanvuuren60@gmail.com',
+          name: 'Brandon Van Vuuren',
+        });
+        setIsLoading(false);
+        return;
+      }
       const token = localStorage.getItem('token');
       if (token) {
         try {

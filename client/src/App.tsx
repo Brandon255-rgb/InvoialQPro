@@ -29,10 +29,11 @@ export default function App() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
-          <Route path="/">
+          <Route>
             <ProtectedRoute>
               <Layout>
                 <Switch>
+                  <Route path="/dashboard" component={Dashboard} />
                   <Route path="/" component={Dashboard} />
                   <Route path="/reports" component={Reports} />
                   <Route path="/settings" component={Settings} />
