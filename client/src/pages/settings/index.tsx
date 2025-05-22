@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import DashboardLayout from "@/components/layouts/Dashboard";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,10 +47,10 @@ const passwordFormSchema = z.object({
 });
 
 const notificationFormSchema = z.object({
-  emailNotifications: z.boolean().default(true),
-  invoiceReminders: z.boolean().default(true),
-  paymentNotifications: z.boolean().default(true),
-  marketingEmails: z.boolean().default(false),
+  emailNotifications: z.boolean(),
+  invoiceReminders: z.boolean(),
+  paymentNotifications: z.boolean(),
+  marketingEmails: z.boolean(),
   reminderFrequency: z.enum(["daily", "weekly", "monthly"]),
 });
 
@@ -68,7 +67,7 @@ const securitySchema = z.object({
   loginNotifications: z.boolean(),
 });
 
-type NotificationSettings = z.infer<typeof notificationSchema>;
+type NotificationSettings = z.infer<typeof notificationFormSchema>;
 type AppearanceSettings = z.infer<typeof appearanceSchema>;
 type SecuritySettings = z.infer<typeof securitySchema>;
 
@@ -100,11 +99,11 @@ const Settings = () => {
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: user?.name || "",
+      name: user?.user_metadata?.name || "",
       email: user?.email || "",
-      company: user?.company || "",
-      phone: user?.phone || "",
-      address: user?.address || "",
+      company: user?.user_metadata?.company || "",
+      phone: user?.user_metadata?.phone || "",
+      address: user?.user_metadata?.address || "",
     },
   });
 
@@ -320,6 +319,7 @@ const Settings = () => {
   // Danger Zone: Account deletion
   const handleDeleteAccount = async () => {
     if (!window.confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+    if (!user?.id) return;
     try {
       setIsSubmitting(true);
       // Delete from Supabase Auth
@@ -344,35 +344,31 @@ const Settings = () => {
 
   if (!user) {
     return (
-      <DashboardLayout title="Settings" description="Your account settings">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-gray-500">Please log in to access settings</div>
-        </div>
-      </DashboardLayout>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500">Please log in to access settings</div>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout
-      title="Settings"
-      description="Manage your account settings and preferences"
-    >
-      <div className="flex justify-center items-start w-full min-h-[80vh]">
-        {/* Settings card: nav + content */}
-        <div className="bg-surface border border-border rounded-xl flex w-full max-w-5xl">
-          {/* Settings vertical nav as a menu, not a sidebar */}
-          <div className="py-8 px-0 flex flex-col gap-2 w-56">
-            {SECTIONS.map((section) => (
-              <button
-                key={section.key}
-                className={`text-left px-6 py-2 rounded-md font-medium transition text-muted hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent ${activeSection === section.key ? 'bg-border text-accent' : ''}`}
-                onClick={() => setActiveSection(section.key)}
-                style={{ background: 'none', border: 'none' }}
-              >
-                {section.label}
-              </button>
-            ))}
-          </div>
+    <div className="flex justify-center items-start w-full min-h-[80vh] bg-background">
+      {/* Settings card: nav + content */}
+      <div className="bg-surface border border-border rounded-xl flex w-full max-w-5xl mt-12 shadow-xl">
+        {/* Settings vertical nav as a menu, not a sidebar */}
+        <div className="py-8 px-0 flex flex-col gap-2 w-56">
+          {SECTIONS.map((section) => (
+            <button
+              key={section.key}
+              className={`text-left px-6 py-2 rounded-md font-medium transition text-muted hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent ${activeSection === section.key ? 'bg-border text-accent' : ''}`}
+              onClick={() => setActiveSection(section.key)}
+              style={{ background: 'none', border: 'none' }}
+            >
+              {section.label}
+            </button>
+          ))}
+        </div>
+        {/* Content area: section content only */}
+        <div className="flex-1 p-8">
           {/* Settings section content */}
           <div className="flex-1 p-8">
             {activeSection === "profile" && (
@@ -841,7 +837,7 @@ const Settings = () => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 
