@@ -14,18 +14,20 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.10",
     "@mui/material": "^5.15.10",
+    "@shared/schema": "file:../shared",
     "@tanstack/react-query": "^5.76.1",
     "axios": "^1.6.7",
     "chart.js": "^4.4.1",
     "date-fns": "^3.3.1",
+    "framer-motion": "^12.12.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.5.2",
-    "wouter": "^2.12.1",
-    "@shared/schema": "file:../shared"
+    "wouter": "^2.12.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.7",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
