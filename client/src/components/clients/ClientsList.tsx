@@ -64,11 +64,11 @@ const ClientsList: React.FC<ClientsListProps> = ({
   if (filteredClients.length === 0 && !searchQuery) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-primary-50 p-6 mb-4">
-          <Users className="h-10 w-10 text-primary-600" />
+        <div className="rounded-full mb-4 p-6" style={{ background: 'linear-gradient(135deg, #FFB86C 60%, #fff 100%)' }}>
+          <Users className="h-10 w-10 text-orange-500" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-1">No clients yet</h3>
-        <p className="text-gray-500 mb-4">Add your first client to get started</p>
+        <h3 className="text-lg font-semibold text-white mb-1">No clients found</h3>
+        <p className="text-white mb-4">Add your first client to get started</p>
         <Link href="/clients/create">
           <Button>
             <Plus className="mr-2 h-4 w-4" /> Add Client
@@ -86,15 +86,17 @@ const ClientsList: React.FC<ClientsListProps> = ({
           <Input
             className="pl-10"
             placeholder="Search clients..."
-          value={searchQuery}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            value={searchQuery}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex flex-col items-center justify-center py-12">
-          <p className="text-gray-500 mb-4">No clients found matching "{searchQuery}"</p>
-          <Button variant="outline" onClick={() => setSearchQuery("")}>
-            Clear search
-          </Button>
+          <div className="rounded-full mb-4 p-6" style={{ background: 'linear-gradient(135deg, #FFB86C 60%, #fff 100%)' }}>
+            <Users className="h-10 w-10 text-orange-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-1">No clients found</h3>
+          <p className="text-white mb-4">No clients found matching "{searchQuery}"</p>
+          <Button variant="outline" onClick={() => setSearchQuery("")}>Clear search</Button>
         </div>
       </div>
     );

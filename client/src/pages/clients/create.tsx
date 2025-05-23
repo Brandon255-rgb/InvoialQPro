@@ -3,12 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import ClientForm from "@/components/clients/ClientForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import ClientForm from "@/components/clients/ClientForm";
 
 const CreateClient = () => {
   const { user } = useAuth();
@@ -61,18 +60,13 @@ const CreateClient = () => {
   );
 
   return (
-    <DashboardLayout
-      title="Add Client"
-      description="Create a new client profile"
-      actions={actions}
-    >
-      <div className="bg-white shadow-sm rounded-lg p-6">
-        <ClientForm
-          onSubmit={handleSubmit}
-          isSubmitting={createMutation.isPending}
-        />
-      </div>
-    </DashboardLayout>
+    <div className="bg-white shadow-sm rounded-lg p-6">
+      <ClientForm
+        onSubmit={handleSubmit}
+        isSubmitting={createMutation.isPending}
+      />
+      <div className="mt-4">{actions}</div>
+    </div>
   );
 };
 

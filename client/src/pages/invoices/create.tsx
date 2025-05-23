@@ -3,12 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import InvoiceForm from "@/components/invoices/InvoiceForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import InvoiceForm from "@/components/invoices/InvoiceForm";
 
 const CreateInvoice = () => {
   const { user } = useAuth();
@@ -71,18 +70,13 @@ const CreateInvoice = () => {
   );
 
   return (
-    <DashboardLayout
-      title="Create Invoice"
-      description="Create a new invoice for your client"
-      actions={actions}
-    >
-      <div className="bg-white shadow-sm rounded-lg p-6">
-        <InvoiceForm
-          onSubmit={handleSubmit}
-          isSubmitting={createMutation.isPending}
-        />
-      </div>
-    </DashboardLayout>
+    <div className="bg-white shadow-sm rounded-lg p-6">
+      <InvoiceForm
+        onSubmit={handleSubmit}
+        isSubmitting={createMutation.isPending}
+      />
+      <div className="mt-4">{actions}</div>
+    </div>
   );
 };
 

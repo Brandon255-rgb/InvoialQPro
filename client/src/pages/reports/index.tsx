@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -47,9 +48,10 @@ const Reports = () => {
   });
 
   // Fetch all clients
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [], isLoading: clientsLoading } = useQuery<any[]>({
     queryKey: [`/api/clients?userId=${userId}`],
     enabled: !!userId,
+    queryFn: () => apiRequest("GET", `/api/clients?userId=${userId}`).then((res: any) => res.json()),
   });
 
   // Calculate quarter data

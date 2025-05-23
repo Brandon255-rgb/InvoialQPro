@@ -28,9 +28,10 @@ const Clients = () => {
   const [clientToDelete, setClientToDelete] = useState<number | null>(null);
 
   // Fetch clients data
-  const { data: clients = [], isLoading } = useQuery({
+  const { data: clients = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/clients?userId=${userId}`],
     enabled: !!userId,
+    queryFn: () => apiRequest("GET", `/api/clients?userId=${userId}`).then(res => res.json()),
   });
 
   // Delete client mutation

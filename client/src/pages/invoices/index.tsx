@@ -2,10 +2,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layouts/Dashboard";
-import InvoicesList from "@/components/invoices/InvoicesList";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { downloadInvoicePdf, sendInvoiceEmail } from "@/lib/email";
@@ -30,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import InvoicesList from "@/components/invoices/InvoicesList";
 
 const Invoices = () => {
   const { user } = useAuth();
@@ -45,15 +43,17 @@ const Invoices = () => {
   const [isEmailSending, setIsEmailSending] = useState(false);
 
   // Fetch invoices data
-  const { data: invoicesData, isLoading } = useQuery({
+  const { data: invoicesData = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/invoices?userId=${userId}`],
     enabled: !!userId,
+    queryFn: () => apiRequest("GET", `/api/invoices?userId=${userId}`).then(res => res.json()),
   });
 
   // Get full invoice data with client info
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<any[]>({
     queryKey: [`/api/clients?userId=${userId}`],
     enabled: !!userId,
+    queryFn: () => apiRequest("GET", `/api/clients?userId=${userId}`).then(res => res.json()),
   });
 
   // Process invoices to include client info
@@ -202,22 +202,9 @@ const Invoices = () => {
     }
   };
 
-  // Action buttons for the layout
-  const actions = (
-    <Link href="/invoices/create">
-      <Button>
-        <Plus className="mr-2 h-4 w-4" />
-        New Invoice
-      </Button>
-    </Link>
-  );
-
   return (
-    <DashboardLayout
-      title="Invoices"
-      description="Manage and track all your invoices"
-      actions={actions}
-    >
+    <>
+      <h1 className="text-2xl font-bold text-white mb-4">Invoices</h1>
       <InvoicesList
         invoices={invoices}
         isLoading={isLoading}
@@ -285,7 +272,7 @@ const Invoices = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 };
 

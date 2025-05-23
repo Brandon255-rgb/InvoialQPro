@@ -12,6 +12,7 @@ import {
   Box,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import SearchIcon from '@mui/icons-material/Search';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -42,6 +43,26 @@ export default function Header() {
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           Welcome back, {user?.name}
         </Typography>
+        {/* Global Invoice Search Bar */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 2 }}>
+          <Box sx={{ position: 'relative', width: 240 }}>
+            <SearchIcon sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'text.disabled' }} />
+            <input
+              type="text"
+              placeholder="Search invoices..."
+              style={{
+                width: '100%',
+                padding: '6px 8px 6px 32px',
+                borderRadius: 6,
+                border: '1px solid #E5E7EB',
+                background: '#1A1A1E',
+                color: '#E5E7EB',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+          </Box>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton color="inherit">
             <NotificationsIcon />

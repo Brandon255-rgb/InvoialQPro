@@ -61,18 +61,13 @@ const CreateItem = () => {
   );
 
   return (
-    <DashboardLayout
-      title="Add Item"
-      description="Create a new product or service"
-      actions={actions}
-    >
-      <div className="bg-white shadow-sm rounded-lg p-6">
-        <ItemForm
-          onSubmit={handleSubmit}
-          isSubmitting={createMutation.isPending}
-        />
-      </div>
-    </DashboardLayout>
+    <div className="bg-white shadow-sm rounded-lg p-6">
+      <ItemForm
+        onSubmit={handleSubmit}
+        isSubmitting={createMutation.isPending}
+      />
+      <div className="mt-4">{actions}</div>
+    </div>
   );
 };
 
