@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@shared/schema': path.resolve(__dirname, '../shared/schema.ts'),
+      '@services': path.resolve(__dirname, './src/services'),
     },
   },
   server: {
@@ -23,6 +24,12 @@ export default defineConfig({
       },
     },
   },
-  root: __dirname,
-  build: { outDir: path.resolve(__dirname, "dist"), emptyOutDir: true },
+  build: {
+    outDir: path.resolve(__dirname, "dist"),
+    emptyOutDir: true,
+    sourcemap: true,
+  },
+  optimizeDeps: {
+    include: ['axios', '@supabase/supabase-js'],
+  },
 }); 

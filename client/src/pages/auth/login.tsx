@@ -97,18 +97,18 @@ export default function Login() {
       if (!profile) {
         toast({
           title: "Profile incomplete",
-          description: "Please complete your profile after logging in.",
+          description: "Please complete your profile in settings after logging in.",
           variant: "default",
         });
-        // Optionally, redirect to profile completion page
-        navigate("/profile");
+        // Redirect to dashboard instead of profile
+        navigate("/dashboard");
         return;
       }
 
       // Show success message
       toast({
         title: "Login successful",
-        description: `You are now logged in!`,
+        description: `Welcome back!`,
       });
 
       // Navigate to dashboard

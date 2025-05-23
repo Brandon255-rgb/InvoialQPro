@@ -1,4 +1,22 @@
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
+
+// Create an axios instance with the base URL and default headers
+export const api = axios.create({
+  baseURL: 'http://localhost:5000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add an interceptor to include the auth token in requests
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
 
 export interface DashboardStats {
   totalInvoices: number;
@@ -23,7 +41,7 @@ export interface DashboardStats {
 
 export const fetchDashboardData = async (): Promise<DashboardStats> => {
   try {
-    const response = await axios.get<DashboardStats>('/api/analytics/dashboard');
+    const response = await api.get<DashboardStats>('/api/analytics/dashboard');
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

@@ -1,7 +1,7 @@
 {
-  "name": "invoialqpro-server",
+  "name": "invoiaiqpro-server",
   "version": "1.0.0",
-  "description": "Server application for InvoialQPro",
+  "description": "Server application for invoiaiqpro",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

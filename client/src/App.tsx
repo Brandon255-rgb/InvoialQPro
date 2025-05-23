@@ -20,7 +20,6 @@ import InvoiceEdit from './pages/invoices/[id]';
 import Items from './pages/items';
 import ItemCreate from './pages/items/create';
 import ItemEdit from './pages/items/[id]';
-import Profile from './pages/profile';
 
 export default function App() {
   return (
@@ -34,9 +33,8 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <Switch>
-                  <Route path="/dashboard" component={Dashboard} />
                   <Route path="/" component={Dashboard} />
-                  <Route path="/profile" component={Profile} />
+                  <Route path="/dashboard" component={Dashboard} />
                   <Route path="/reports" component={Reports} />
                   <Route path="/settings" component={Settings} />
                   <Route path="/clients" component={Clients} />

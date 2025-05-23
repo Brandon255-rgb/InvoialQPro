@@ -6,18 +6,18 @@ async function seed() {
   // Users
   const password = await hash('password123', 10);
   const [admin] = await db.insert(users).values({
-    email: 'admin@invoialqpro.com',
+    email: 'admin@invoiaiqpro.com',
     password,
     name: 'Admin User',
     role: 'super_admin',
     status: 'active',
-    company: 'InvoialQPro',
+    company: 'invoiaiqpro',
     phone: '1234567890',
     address: '123 Main St',
   }).returning();
 
   const [user] = await db.insert(users).values({
-    email: 'user@invoialqpro.com',
+    email: 'user@invoiaiqpro.com',
     password,
     name: 'Regular User',
     role: 'user',
@@ -79,7 +79,7 @@ async function seed() {
   await db.insert(teamMembers).values({
     userId: admin.id,
     invitedBy: admin.id,
-    email: 'user@invoialqpro.com',
+    email: 'user@invoiaiqpro.com',
     role: 'user',
     status: 'active',
     createdAt: new Date(),

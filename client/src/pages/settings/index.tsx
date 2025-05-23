@@ -22,19 +22,32 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { UserCircle, CreditCard, Bell, Lock, Mail } from "lucide-react";
+import { UserCircle, CreditCard, Bell, Lock, Mail, Building2, Phone, MapPin, Calendar, VenusAndMars, Globe, Briefcase, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { ProfilePictureUpload } from "@/components/ProfilePictureUpload";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
-  company: z.string().optional(),
+  company: z.string().min(1, "Company name is required"),
+  jobTitle: z.string().optional(),
   phone: z.string().optional(),
-  address: z.string().optional(),
+  mobilePhone: z.string().optional(),
+  website: z.string().url().optional().or(z.literal("")),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
+  bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
+  dateOfBirth: z.date().optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
 });
 
 const passwordFormSchema = z.object({
@@ -72,13 +85,13 @@ type AppearanceSettings = z.infer<typeof appearanceSchema>;
 type SecuritySettings = z.infer<typeof securitySchema>;
 
 const SECTIONS = [
-  { key: "profile", label: "Profile" },
-  { key: "security", label: "Security" },
-  { key: "notifications", label: "Notifications" },
-  { key: "appearance", label: "Appearance" },
-  { key: "billing", label: "Billing" },
-  { key: "api", label: "API & Integrations" },
-  { key: "danger", label: "Danger Zone" },
+  { key: "profile", label: "Profile", icon: UserCircle },
+  { key: "security", label: "Security", icon: Lock },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "appearance", label: "Appearance", icon: Globe },
+  { key: "billing", label: "Billing", icon: CreditCard },
+  { key: "api", label: "API & Integrations", icon: Mail },
+  { key: "danger", label: "Danger Zone", icon: X },
 ];
 
 // Utility to set theme class on <html>
@@ -94,6 +107,8 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
+  const [profilePicture, setProfilePicture] = useState<string | null>(user?.user_metadata?.avatar_url || null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
   // Forms setup
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
@@ -102,8 +117,22 @@ const Settings = () => {
       name: user?.user_metadata?.name || "",
       email: user?.email || "",
       company: user?.user_metadata?.company || "",
+      jobTitle: user?.user_metadata?.jobTitle || "",
       phone: user?.user_metadata?.phone || "",
-      address: user?.user_metadata?.address || "",
+      mobilePhone: user?.user_metadata?.mobilePhone || "",
+      website: user?.user_metadata?.website || "",
+      address: user?.user_metadata?.address || {
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+      },
+      bio: user?.user_metadata?.bio || "",
+      dateOfBirth: user?.user_metadata?.dateOfBirth
+        ? new Date(user.user_metadata.dateOfBirth)
+        : undefined,
+      gender: user?.user_metadata?.gender || undefined,
     },
   });
 
@@ -227,30 +256,107 @@ const Settings = () => {
   useEffect(() => {
     async function fetchTheme() {
       if (!user?.id) return;
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('theme')
-        .eq('user_id', user.id)
-        .single();
-      if (!error && data?.theme) {
-        setThemeClass(data.theme);
-        appearanceForm.setValue('theme', data.theme);
-      } else {
+      try {
+        const response = await apiRequest('GET', `/api/users/${user.id}/settings`);
+        const data = await response.json();
+        if (data?.theme) {
+          setThemeClass(data.theme);
+          appearanceForm.setValue('theme', data.theme);
+        } else {
+          setThemeClass('light');
+          appearanceForm.setValue('theme', 'light');
+        }
+      } catch (error) {
+        console.error('Error fetching theme:', error);
         setThemeClass('light');
         appearanceForm.setValue('theme', 'light');
       }
     }
     fetchTheme();
-    // eslint-disable-next-line
   }, [user?.id]);
 
-  const onNotificationSubmit = (data: NotificationSettings) => {
-    notificationMutation.mutate(data);
+  const onNotificationSubmit = async (data: NotificationSettings) => {
+    try {
+      setIsSubmitting(true);
+      const response = await apiRequest('PUT', `/api/users/${user?.id}/settings`, {
+        ...data,
+        type: 'notifications'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update notification settings');
+      }
+
+      toast({
+        title: "Settings updated",
+        description: "Your notification preferences have been saved.",
+      });
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleProfileSubmit = (data: z.infer<typeof profileFormSchema>) => {
-    profileMutation.mutate(data);
+  const handleProfileSubmit = async (data: z.infer<typeof profileFormSchema>) => {
+    try {
+      setIsSubmitting(true);
+
+      // Update user profile through our API
+      const response = await apiRequest('PUT', `/api/users/${user?.id}`, {
+        name: data.name,
+        email: data.email,
+        company: data.company,
+        jobTitle: data.jobTitle,
+        phone: data.phone,
+        mobilePhone: data.mobilePhone,
+        website: data.website,
+        address: data.address,
+        bio: data.bio,
+        dateOfBirth: data.dateOfBirth?.toISOString(),
+        gender: data.gender,
+        avatar_url: profilePicture,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
+      });
+      setNotification({ message: "Profile has been updated", type: "success" });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+      setNotification({ message: "Failed to update profile. Please try again.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleProfilePictureUpdate = async (url: string) => {
+    setProfilePicture(url);
+    // The actual update will happen when the form is submitted
+  };
+
+  // Auto-dismiss notification after 3 seconds
+  React.useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const handlePasswordSubmit = (data: z.infer<typeof passwordFormSchema>) => {
     passwordMutation.mutate(data);
@@ -290,15 +396,14 @@ const Settings = () => {
   const onSecuritySubmit = async (data: SecuritySettings) => {
     try {
       setIsSubmitting(true);
-      const { error } = await supabase
-        .from("user_settings")
-        .upsert({
-          user_id: user?.id,
-          ...data,
-          updated_at: new Date().toISOString(),
-        });
+      const response = await apiRequest('PUT', `/api/users/${user?.id}/settings`, {
+        ...data,
+        type: 'security'
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to update security settings');
+      }
 
       toast({
         title: "Settings updated",
@@ -354,43 +459,85 @@ const Settings = () => {
     <div className="flex justify-center items-start w-full min-h-[80vh] bg-background">
       {/* Settings card: nav + content */}
       <div className="bg-surface border border-border rounded-xl flex w-full max-w-5xl mt-12 shadow-xl">
-        {/* Settings vertical nav as a menu, not a sidebar */}
+        {/* Settings vertical nav */}
         <div className="py-8 px-0 flex flex-col gap-2 w-56">
           {SECTIONS.map((section) => (
             <button
               key={section.key}
-              className={`text-left px-6 py-2 rounded-md font-medium transition text-muted hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent ${activeSection === section.key ? 'bg-border text-accent' : ''}`}
+              className={`text-left px-6 py-2 rounded-md font-medium transition text-muted hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent flex items-center gap-2 ${
+                activeSection === section.key ? 'bg-border text-accent' : ''
+              }`}
               onClick={() => setActiveSection(section.key)}
               style={{ background: 'none', border: 'none' }}
             >
+              <section.icon className="w-4 h-4" />
               {section.label}
             </button>
           ))}
         </div>
-        {/* Content area: section content only */}
+
+        {/* Content area */}
         <div className="flex-1 p-8">
-          {/* Settings section content */}
-          <div className="flex-1 p-8">
-            {activeSection === "profile" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">Profile</h2>
-                <p className="text-muted text-sm mb-6">Update your personal information.</p>
-                <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+          {/* Notification */}
+          {notification && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className={`bg-black border-2 rounded-xl px-8 py-6 shadow-lg flex flex-col items-center gap-2 ${
+                notification.type === 'success' ? 'border-orange-500' : 'border-red-500'
+              }`}
+                style={{ minWidth: 300 }}
+              >
+                <div className={`text-lg font-semibold ${
+                  notification.type === 'success' ? 'text-orange-500' : 'text-red-500'
+                }`}>{notification.message}</div>
+                <button
+                  className="absolute top-2 right-2 text-white hover:text-orange-500"
+                  onClick={() => setNotification(null)}
+                  style={{ position: 'absolute', top: 8, right: 16 }}
+                  aria-label="Close notification"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Profile Section */}
+          {activeSection === "profile" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">Profile Settings</h2>
+              <p className="text-muted text-sm mb-6">Update your personal information and preferences</p>
+              
+              <div className="flex flex-col items-center mb-8">
+                <ProfilePictureUpload
+                  currentImageUrl={profilePicture}
+                  userId={user?.id || ""}
+                  onImageUpdate={handleProfilePictureUpdate}
+                />
+              </div>
+
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-6">
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Basic Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={profileForm.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Name</FormLabel>
+                            <FormLabel>Full Name</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <div className="relative">
+                                <UserCircle className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={profileForm.control}
                         name="email"
@@ -398,25 +545,109 @@ const Settings = () => {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled />
+                              <div className="relative">
+                                <Mail className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
+                                <Input {...field} disabled className="pl-9 bg-black border-orange-500 text-white placeholder:text-gray-500" />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="dateOfBirth"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date of Birth</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                  onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                                  className="pl-9"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="gender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="pl-9">
+                                  <VenusAndMars className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Company Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Company Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={profileForm.control}
                         name="company"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Company</FormLabel>
+                            <FormLabel>Company Name</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <div className="relative">
+                                <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="jobTitle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Job Title</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={profileForm.control}
                         name="phone"
@@ -424,18 +655,121 @@ const Settings = () => {
                           <FormItem>
                             <FormLabel>Phone</FormLabel>
                             <FormControl>
-                              <Input {...field} />
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={profileForm.control}
-                        name="address"
+                        name="mobilePhone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Address</FormLabel>
+                            <FormLabel>Mobile Phone</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="website"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Website</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Globe className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Address</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={profileForm.control}
+                        name="address.street"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Street Address</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input {...field} className="pl-9" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="address.city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="address.state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State/Province</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="address.postalCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Postal Code</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={profileForm.control}
+                        name="address.country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Country</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -444,95 +778,34 @@ const Settings = () => {
                         )}
                       />
                     </div>
-                    <div className="flex justify-end">
-                      <Button type="submit" className="bg-accent text-white rounded-lg px-4 py-2 text-sm hover:bg-accent/90 transition">
-                        Save
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </div>
-            )}
-            {activeSection === "security" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">Security</h2>
-                <p className="text-muted text-sm mb-6">Change your password and manage security settings.</p>
-                <Form {...securityForm}>
-                  <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={securityForm.control}
-                        name="twoFactorAuth"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Two-Factor Authentication</FormLabel>
-                              <FormDescription>
-                                Add an extra layer of security to your account
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                  </div>
 
-                      <FormField
-                        control={securityForm.control}
-                        name="sessionTimeout"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Session Timeout</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select timeout" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="15">15 minutes</SelectItem>
-                                <SelectItem value="30">30 minutes</SelectItem>
-                                <SelectItem value="60">1 hour</SelectItem>
-                                <SelectItem value="120">2 hours</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              Automatically log out after period of inactivity
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  {/* Bio */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">About</h3>
+                    <FormField
+                      control={profileForm.control}
+                      name="bio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bio</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              className="min-h-[100px]"
+                              placeholder="Tell us about yourself..."
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Brief description for your profile. Maximum 500 characters.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                      <FormField
-                        control={securityForm.control}
-                        name="loginNotifications"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Login Notifications</FormLabel>
-                              <FormDescription>
-                                Get notified when someone logs into your account
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
+                  <div className="flex justify-end">
                     <Button
                       type="submit"
                       className="bg-orange-600 hover:bg-orange-700"
@@ -547,294 +820,399 @@ const Settings = () => {
                         "Save Changes"
                       )}
                     </Button>
-                  </form>
-                </Form>
-              </div>
-            )}
-            {activeSection === "notifications" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">Notifications</h2>
-                <p className="text-muted text-sm mb-6">Manage your notification preferences.</p>
-                <Form {...notificationForm}>
-                  <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={notificationForm.control}
-                        name="emailNotifications"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Email Notifications</FormLabel>
-                              <FormDescription>
-                                Receive notifications via email
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
 
-                      <FormField
-                        control={notificationForm.control}
-                        name="invoiceReminders"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Invoice Reminders</FormLabel>
-                              <FormDescription>
-                                Get reminded about upcoming and overdue invoices
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={notificationForm.control}
-                        name="paymentNotifications"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Payment Notifications</FormLabel>
-                              <FormDescription>
-                                Get notified when payments are received
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={notificationForm.control}
-                        name="marketingEmails"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel>Marketing Emails</FormLabel>
-                              <FormDescription>
-                                Receive updates about new features and promotions
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={notificationForm.control}
-                        name="reminderFrequency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Reminder Frequency</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select frequency" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekly">Weekly</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
-                              </SelectContent>
-                            </Select>
+          {/* Other sections remain unchanged */}
+          {activeSection === "security" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">Security</h2>
+              <p className="text-muted text-sm mb-6">Change your password and manage security settings.</p>
+              <Form {...securityForm}>
+                <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-6">
+                  <div className="space-y-4">
+                    <FormField
+                      control={securityForm.control}
+                      name="twoFactorAuth"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Two-Factor Authentication</FormLabel>
                             <FormDescription>
-                              How often you want to receive reminders
+                              Add an extra layer of security to your account
                             </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="bg-orange-600 hover:bg-orange-700"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        "Save Changes"
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
                       )}
-                    </Button>
-                  </form>
-                </Form>
-              </div>
-            )}
-            {activeSection === "appearance" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">Appearance</h2>
-                <p className="text-muted text-sm mb-6">Customize the look and feel of your dashboard.</p>
-                <Form {...appearanceForm}>
-                  <form onSubmit={appearanceForm.handleSubmit(onAppearanceSubmit)} className="space-y-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={appearanceForm.control}
-                        name="theme"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Theme</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select theme" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="light">Light (white & orange)</SelectItem>
-                                <SelectItem value="dark">Dark (black & orange)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              Choose your preferred color theme
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    />
 
-                      <FormField
-                        control={appearanceForm.control}
-                        name="fontSize"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Font Size</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select font size" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="small">Small</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="large">Large</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              Adjust the text size throughout the application
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={appearanceForm.control}
-                        name="currency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Default Currency</FormLabel>
+                    <FormField
+                      control={securityForm.control}
+                      name="sessionTimeout"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Session Timeout</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
-                              <Input {...field} placeholder="USD" />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select timeout" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormDescription>
-                              Set your preferred currency for invoices and payments
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={appearanceForm.control}
-                        name="dateFormat"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date Format</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="MM/DD/YYYY" />
-                            </FormControl>
-                            <FormDescription>
-                              Choose how dates are displayed
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="bg-orange-600 hover:bg-orange-700"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        "Save Changes"
+                            <SelectContent>
+                              <SelectItem value="15">15 minutes</SelectItem>
+                              <SelectItem value="30">30 minutes</SelectItem>
+                              <SelectItem value="60">1 hour</SelectItem>
+                              <SelectItem value="120">2 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Automatically log out after period of inactivity
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </Button>
-                  </form>
-                </Form>
-              </div>
-            )}
-            {activeSection === "billing" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">Billing</h2>
-                <p className="text-muted text-sm mb-6">Manage your subscription and payment methods.</p>
-                <div className="text-muted">Coming soon...</div>
-              </div>
-            )}
-            {activeSection === "api" && (
-              <div>
-                <h2 className="text-xl font-medium text-white mb-2">API & Integrations</h2>
-                <p className="text-muted text-sm mb-6">Manage API keys and integrations.</p>
-                <div className="text-muted">Coming soon...</div>
-              </div>
-            )}
-            {activeSection === "danger" && (
-              <div>
-                <h2 className="text-xl font-medium text-danger mb-2">Danger Zone</h2>
-                <p className="text-muted text-sm mb-6">Delete your account or export your data.</p>
-                <Button
-                  onClick={handleDeleteAccount}
-                  className="bg-danger text-white hover:bg-danger/90"
-                  disabled={isSubmitting}
-                >
-                  Delete Account
-                </Button>
-              </div>
-            )}
-          </div>
+                    />
+
+                    <FormField
+                      control={securityForm.control}
+                      name="loginNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Login Notifications</FormLabel>
+                            <FormDescription>
+                              Get notified when someone logs into your account
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="bg-orange-600 hover:bg-orange-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          )}
+
+          {activeSection === "notifications" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">Notifications</h2>
+              <p className="text-muted text-sm mb-6">Manage your notification preferences.</p>
+              <Form {...notificationForm}>
+                <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
+                  <div className="space-y-4">
+                    <FormField
+                      control={notificationForm.control}
+                      name="emailNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Email Notifications</FormLabel>
+                            <FormDescription>
+                              Receive notifications via email
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={notificationForm.control}
+                      name="invoiceReminders"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Invoice Reminders</FormLabel>
+                            <FormDescription>
+                              Get reminded about upcoming and overdue invoices
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={notificationForm.control}
+                      name="paymentNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Payment Notifications</FormLabel>
+                            <FormDescription>
+                              Get notified when payments are received
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={notificationForm.control}
+                      name="marketingEmails"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Marketing Emails</FormLabel>
+                            <FormDescription>
+                              Receive updates about new features and promotions
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={notificationForm.control}
+                      name="reminderFrequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reminder Frequency</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            How often you want to receive reminders
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="bg-orange-600 hover:bg-orange-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          )}
+
+          {activeSection === "appearance" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">Appearance</h2>
+              <p className="text-muted text-sm mb-6">Customize the look and feel of your dashboard.</p>
+              <Form {...appearanceForm}>
+                <form onSubmit={appearanceForm.handleSubmit(onAppearanceSubmit)} className="space-y-6">
+                  <div className="space-y-4">
+                    <FormField
+                      control={appearanceForm.control}
+                      name="theme"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Theme</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select theme" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="light">Light (white & orange)</SelectItem>
+                              <SelectItem value="dark">Dark (black & orange)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose your preferred color theme
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={appearanceForm.control}
+                      name="fontSize"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Font Size</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select font size" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="small">Small</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="large">Large</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Adjust the text size throughout the application
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={appearanceForm.control}
+                      name="currency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default Currency</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="USD" />
+                          </FormControl>
+                          <FormDescription>
+                            Set your preferred currency for invoices and payments
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={appearanceForm.control}
+                      name="dateFormat"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date Format</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="MM/DD/YYYY" />
+                          </FormControl>
+                          <FormDescription>
+                            Choose how dates are displayed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="bg-orange-600 hover:bg-orange-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          )}
+
+          {activeSection === "billing" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">Billing</h2>
+              <p className="text-muted text-sm mb-6">Manage your subscription and payment methods.</p>
+              <div className="text-muted">Coming soon...</div>
+            </div>
+          )}
+
+          {activeSection === "api" && (
+            <div>
+              <h2 className="text-xl font-medium text-white mb-2">API & Integrations</h2>
+              <p className="text-muted text-sm mb-6">Manage API keys and integrations.</p>
+              <div className="text-muted">Coming soon...</div>
+            </div>
+          )}
+
+          {activeSection === "danger" && (
+            <div>
+              <h2 className="text-xl font-medium text-danger mb-2">Danger Zone</h2>
+              <p className="text-muted text-sm mb-6">Delete your account or export your data.</p>
+              <Button
+                onClick={handleDeleteAccount}
+                className="bg-danger text-white hover:bg-danger/90"
+                disabled={isSubmitting}
+              >
+                Delete Account
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

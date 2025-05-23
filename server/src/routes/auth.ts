@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { db, schema } from '../lib/db';
-import { eq } from 'drizzle-orm';
 import { createClient } from '@supabase/supabase-js';
 import { generateToken, verifyToken } from '../lib/auth';
 import { insertUserSchema } from '@shared/schema';
@@ -14,34 +12,51 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Helper function to convert database user to shared schema type
-function convertToSharedUser(dbUser: typeof schema.users.$inferSelect): User {
+// Helper function to convert Supabase user to shared schema type
+function convertToSharedUser(supabaseUser: any): User {
   return {
-    id: String(dbUser.id),
-    email: dbUser.email,
-    password: dbUser.password || '',
-    name: dbUser.name || '',
-    role: dbUser.role || 'user',
-    status: dbUser.status || 'active',
-    company: dbUser.company ?? null,
-    phone: dbUser.phone ?? null,
-    address: dbUser.address ?? null,
-    created_at: dbUser.created_at || new Date(),
+    id: supabaseUser.id,
+    email: supabaseUser.email,
+    password: '', // Don't expose password
+    name: supabaseUser.user_metadata?.name || '',
+    role: supabaseUser.user_metadata?.role || 'user',
+    status: supabaseUser.user_metadata?.status || 'active',
+    company: supabaseUser.user_metadata?.company || null,
+    phone: supabaseUser.user_metadata?.phone || null,
+    address: supabaseUser.user_metadata?.address || null,
+    created_at: new Date(supabaseUser.created_at),
   };
 }
 
 // Sign up
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, company, phone, address } = req.body;
 
     // Validate input
-    const validatedData = insertUserSchema.parse({ email, password, name });
+    const validatedData = insertUserSchema.parse({ 
+      email, 
+      password, 
+      name,
+      company,
+      phone,
+      address
+    });
 
     // Create user in Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: validatedData.email,
       password: validatedData.password,
+      options: {
+        data: {
+          name: validatedData.name,
+          company: validatedData.company,
+          phone: validatedData.phone,
+          address: validatedData.address,
+          role: 'user',
+          status: 'active'
+        }
+      }
     });
 
     if (authError) {
@@ -52,20 +67,8 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ error: 'Failed to create user' });
     }
 
-    // Create user in our database
-    const [dbUser] = await db.insert(schema.users).values({
-      id: authData.user.id,
-      email: validatedData.email,
-      name: validatedData.name,
-      role: 'user' as const,
-      status: 'active' as const,
-      company: validatedData.company,
-      phone: validatedData.phone,
-      address: validatedData.address,
-    }).returning();
-
     // Convert to shared schema type
-    const user = convertToSharedUser(dbUser);
+    const user = convertToSharedUser(authData.user);
 
     // Generate JWT token
     const token = generateToken(user);
@@ -76,6 +79,9 @@ router.post('/signup', async (req, res) => {
     });
   } catch (error) {
     console.error('Error signing up:', error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: 'Invalid input data', details: error.errors });
+    }
     res.status(500).json({ error: 'Failed to sign up' });
   }
 });
@@ -99,27 +105,21 @@ router.post('/signin', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Get user from our database
-    const dbUser = await db.query.users.findFirst({
-      where: eq(schema.users.id, authData.user.id),
-    });
+    // Get user metadata from Supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser(authData.session.access_token);
 
-    if (!dbUser) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    if (dbUser.status !== 'active') {
-      return res.status(401).json({ error: 'Account is not active' });
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Failed to get user data' });
     }
 
     // Convert to shared schema type
-    const user = convertToSharedUser(dbUser);
+    const sharedUser = convertToSharedUser(user);
 
     // Generate JWT token
-    const token = generateToken(user);
+    const token = generateToken(sharedUser);
 
     res.json({
-      user,
+      user: sharedUser,
       token,
     });
   } catch (error) {
@@ -155,19 +155,17 @@ router.get('/me', async (req, res) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.id, decoded.id),
-    });
+    // Get user from Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (error || !user) {
+      return res.status(401).json({ error: 'Failed to get user data' });
     }
 
-    if (user.status !== 'active') {
-      return res.status(401).json({ error: 'Account is not active' });
-    }
+    // Convert to shared schema type
+    const sharedUser = convertToSharedUser(user);
 
-    res.json(user);
+    res.json(sharedUser);
   } catch (error) {
     console.error('Error getting current user:', error);
     res.status(500).json({ error: 'Failed to get current user' });

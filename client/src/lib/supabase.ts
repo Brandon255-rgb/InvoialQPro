@@ -13,11 +13,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    storageKey: 'invoiaiqpro_auth',
+    storage: window.localStorage,
   },
   global: {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'apikey': supabaseAnonKey,
     },
   },
 });

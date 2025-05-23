@@ -1,5 +1,5 @@
 export interface Client {
-  id: string;
+  id: number;
   name: string;
   email: string;
   phone?: string;
@@ -13,7 +13,7 @@ export interface Client {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  clientId: string;
+  clientId: number;
   issueDate: Date;
   dueDate: Date;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
@@ -50,7 +50,7 @@ export interface InsertClient {
 
 export interface InsertInvoice {
   invoiceNumber: string;
-  clientId: string;
+  clientId: number;
   issueDate: Date;
   dueDate: Date;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';

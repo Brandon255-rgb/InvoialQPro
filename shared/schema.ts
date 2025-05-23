@@ -418,7 +418,7 @@ export const userSchema = z.object({
   address: z.string().nullable(),
 });
 
-export const clientSchema = z.object({
+export const insertClientSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email().max(255),
   company: z.string().max(100).nullable(),
@@ -428,31 +428,34 @@ export const clientSchema = z.object({
   user_id: z.string().uuid().nullable(),
 });
 
-export const itemSchema = z.object({
+export const insertItemSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().nullable(),
-  price: z.number().positive(),
+  price: z.number().min(0).default(0),
   category: z.string().max(50).nullable(),
-  is_inventory: z.boolean().default(false),
-  stock_quantity: z.number().default(0),
-  user_id: z.string().uuid().nullable(),
+  isInventory: z.boolean().default(false),
+  stockQuantity: z.number().min(0).default(0),
+  userId: z.string().uuid().nullable(),
 });
 
-export const invoiceSchema = z.object({
+export const insertInvoiceSchema = z.object({
+  user_id: z.string().uuid().nullable(),
   client_id: z.number().nullable(),
   invoice_number: z.string().max(50),
   status: z.string().max(50).default('draft'),
   issue_date: z.date(),
   due_date: z.date(),
-  subtotal: z.number().positive(),
+  subtotal: z.number().min(0).default(0),
   tax: z.number().min(0).default(0),
   discount: z.number().min(0).default(0),
-  total: z.number().positive(),
+  total: z.number().min(0).default(0),
   notes: z.string().nullable(),
-  user_id: z.string().uuid().nullable(),
+  is_recurring: z.boolean().default(false),
+  frequency: z.enum(['weekly', 'biweekly', 'monthly', 'quarterly', 'annually']).optional(),
+  next_invoice_date: z.date().optional(),
 });
 
-export const invoiceItemSchema = z.object({
+export const insertInvoiceItemSchema = z.object({
   invoice_id: z.number().nullable(),
   item_id: z.number().nullable(),
   description: z.string().min(1),

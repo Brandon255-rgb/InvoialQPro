@@ -1,6 +1,4 @@
 import React from "react";
-import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -14,7 +12,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   title,
   subtitle,
   type,
-}) => {
+}) => { 
   return (
     <div
       className="min-h-screen flex flex-col justify-center items-center text-white"

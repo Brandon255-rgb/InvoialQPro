@@ -57,6 +57,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
   });
 
   const handleSubmit = (data: ClientFormValues) => {
+    // Ensure user_id is set
+    data.user_id = userId || "";
     onSubmit(data);
   };
 

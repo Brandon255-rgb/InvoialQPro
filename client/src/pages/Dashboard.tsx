@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchDashboardData, DashboardStats } from '../services/dashboard';
+import { fetchDashboardData, DashboardStats, api } from '@services/dashboard';
 import StatCard from '../components/dashboard/StatCard';
 import RecentInvoices from '../components/dashboard/RecentInvoices';
 import RevenueChart from '../components/dashboard/RevenueChart';
@@ -36,12 +36,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchInvoicesData = async () => {
       try {
-        const response = await fetch('http://localhost:5001/api/invoices');
-        if (!response.ok) {
-          throw new Error('Failed to fetch invoices');
-        }
-        const data: Invoice[] = await response.json();
-        setInvoices(data);
+        const response = await api.get<Invoice[]>('/api/invoices');
+        setInvoices(response.data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred while fetching invoices');
       }

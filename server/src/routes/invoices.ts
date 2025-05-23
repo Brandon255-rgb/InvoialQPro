@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth';
 import { db } from '../lib/db';
-import { invoices, invoiceItems, items, clients } from '@shared/schema';
+import { invoices, invoiceItems, items, clients, users } from '../lib/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 const router = Router();
@@ -14,23 +14,77 @@ router.get('/', auth, async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // First verify the user exists in our database
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId)
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found in database' });
+    }
+
     const allInvoices = await db.query.invoices.findMany({
-      where: eq(invoices.userId, userId),
+      where: eq(invoices.user_id, userId),
       with: {
         items: {
           with: {
-            item: true,
-          },
+            item: true
+          }
         },
         client: true,
       },
-      orderBy: [desc(invoices.createdAt)],
+      orderBy: [desc(invoices.created_at)],
     });
 
-    res.json(allInvoices);
+    // Transform the data to match the expected format
+    const transformedInvoices = allInvoices.map(invoice => ({
+      id: invoice.id,
+      clientId: invoice.client_id,
+      invoiceNumber: invoice.invoice_number,
+      status: invoice.status,
+      issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
+      subtotal: Number(invoice.subtotal),
+      tax: Number(invoice.tax),
+      discount: Number(invoice.discount),
+      total: Number(invoice.total),
+      notes: invoice.notes,
+      createdAt: invoice.created_at,
+      client: invoice.client ? {
+        id: invoice.client.id,
+        name: invoice.client.name,
+        email: invoice.client.email,
+        company: invoice.client.company
+      } : null,
+      items: invoice.items.map(item => ({
+        id: item.id,
+        itemId: item.item_id,
+        description: item.description,
+        quantity: item.quantity,
+        price: Number(item.price),
+        total: Number(item.total),
+        item: item.item ? {
+          id: item.item.id,
+          name: item.item.name,
+          description: item.item.description,
+          price: Number(item.item.price)
+        } : null
+      }))
+    }));
+
+    res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    // Provide more detailed error information
+    if (error instanceof Error) {
+      res.status(500).json({ 
+        error: 'Failed to fetch invoices',
+        details: error.message,
+        code: error.name
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch invoices' });
+    }
   }
 });
 
@@ -46,14 +100,10 @@ router.get('/:id', auth, async (req, res) => {
     const invoice = await db.query.invoices.findFirst({
       where: and(
         eq(invoices.id, id),
-        eq(invoices.userId, userId)
+        eq(invoices.user_id, userId)
       ),
       with: {
-        items: {
-          with: {
-            item: true,
-          },
-        },
+        items: true,
         client: true,
       },
     });
@@ -78,39 +128,47 @@ router.post('/', auth, async (req, res) => {
     }
 
     const {
-      clientId,
-      invoiceNumber,
-      issueDate,
-      dueDate,
+      client_id,
+      invoice_number,
+      issue_date,
+      due_date,
       items: invoiceItems,
       notes,
       terms,
       status = 'draft',
+      subtotal,
+      tax,
+      total,
     } = req.body;
 
     // Start a transaction
     const result = await db.transaction(async (tx) => {
       // Create the invoice
       const [newInvoice] = await tx.insert(invoices).values({
-        clientId,
-        userId,
-        invoiceNumber,
-        issueDate,
-        dueDate,
+        client_id,
+        user_id: userId,
+        invoice_number,
+        issue_date,
+        due_date,
         notes,
         terms,
         status,
+        subtotal,
+        tax,
+        total,
       }).returning();
 
       // Create invoice items
       if (invoiceItems && invoiceItems.length > 0) {
         await tx.insert(invoiceItems).values(
           invoiceItems.map((item: any) => ({
-            invoiceId: newInvoice.id,
-            itemId: item.itemId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            invoice_id: newInvoice.id,
+            item_id: item.item_id,
             description: item.description,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+            user_id: userId,
           }))
         );
       }
@@ -119,11 +177,7 @@ router.post('/', auth, async (req, res) => {
       return await tx.query.invoices.findFirst({
         where: eq(invoices.id, newInvoice.id),
         with: {
-          items: {
-            with: {
-              item: true,
-            },
-          },
+          items: true,
           client: true,
         },
       });
@@ -146,14 +200,17 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     const {
-      clientId,
-      invoiceNumber,
-      issueDate,
-      dueDate,
+      client_id,
+      invoice_number,
+      issue_date,
+      due_date,
       items: invoiceItems,
       notes,
       terms,
       status,
+      subtotal,
+      tax,
+      total,
     } = req.body;
 
     // Start a transaction
@@ -161,17 +218,20 @@ router.put('/:id', auth, async (req, res) => {
       // Update the invoice
       const [updatedInvoice] = await tx.update(invoices)
         .set({
-          clientId,
-          invoiceNumber,
-          issueDate,
-          dueDate,
+          client_id,
+          invoice_number,
+          issue_date,
+          due_date,
           notes,
           terms,
           status,
+          subtotal,
+          tax,
+          total,
         })
         .where(and(
           eq(invoices.id, id),
-          eq(invoices.userId, userId)
+          eq(invoices.user_id, userId)
         ))
         .returning();
 
@@ -181,17 +241,19 @@ router.put('/:id', auth, async (req, res) => {
 
       // Delete existing items
       await tx.delete(invoiceItems)
-        .where(eq(invoiceItems.invoiceId, id));
+        .where(eq(invoiceItems.invoice_id, id));
 
       // Create new items
       if (invoiceItems && invoiceItems.length > 0) {
         await tx.insert(invoiceItems).values(
           invoiceItems.map((item: any) => ({
-            invoiceId: id,
-            itemId: item.itemId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            invoice_id: id,
+            item_id: item.item_id,
             description: item.description,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+            user_id: userId,
           }))
         );
       }
@@ -200,11 +262,7 @@ router.put('/:id', auth, async (req, res) => {
       return await tx.query.invoices.findFirst({
         where: eq(invoices.id, id),
         with: {
-          items: {
-            with: {
-              item: true,
-            },
-          },
+          items: true,
           client: true,
         },
       });
@@ -234,13 +292,13 @@ router.delete('/:id', auth, async (req, res) => {
     await db.transaction(async (tx) => {
       // Delete invoice items first
       await tx.delete(invoiceItems)
-        .where(eq(invoiceItems.invoiceId, id));
+        .where(eq(invoiceItems.invoice_id, id));
 
       // Delete the invoice
       const [deletedInvoice] = await tx.delete(invoices)
         .where(and(
           eq(invoices.id, id),
-          eq(invoices.userId, userId)
+          eq(invoices.user_id, userId)
         ))
         .returning();
 
@@ -269,7 +327,7 @@ router.get('/stats/summary', auth, async (req, res) => {
     }
 
     const allInvoices = await db.query.invoices.findMany({
-      where: eq(invoices.userId, userId),
+      where: eq(invoices.user_id, userId),
     });
 
     const stats = {

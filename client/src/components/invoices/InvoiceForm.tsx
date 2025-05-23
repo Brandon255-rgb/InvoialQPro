@@ -83,22 +83,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: defaultValues || {
       invoice: {
-        userId: userId || 0,
-        clientId: 0,
-        invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+        user_id: userId || "",
+        client_id: 0,
+        invoice_number: `INV-${Date.now().toString().slice(-6)}`,
         status: "draft",
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+        issue_date: new Date(),
+        due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
         subtotal: 0,
         tax: 0,
         discount: 0,
         total: 0,
         notes: "",
-        isRecurring: false,
+        is_recurring: false,
       },
       items: [
         {
-          itemId: null,
+          item_id: null,
           description: "",
           quantity: 1,
           price: 0,
@@ -114,10 +114,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     name: "items",
   });
 
-  // Update userId when user changes
+  // Update user_id when user changes
   useEffect(() => {
     if (userId && !defaultValues) {
-      form.setValue("invoice.userId", userId);
+      form.setValue("invoice.user_id", userId);
     }
   }, [userId, form, defaultValues]);
 
@@ -148,7 +148,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   }, [form.watch("items")]);
 
   const handleSubmit = (data: InvoiceFormValues) => {
-    onSubmit(data);
+    // Convert dates to ISO strings
+    const formattedData = {
+      ...data,
+      invoice: {
+        ...data.invoice,
+        issue_date: data.invoice.issue_date.toISOString(),
+        due_date: data.invoice.due_date.toISOString(),
+      }
+    };
+    onSubmit(formattedData);
   };
 
   // Handle selecting an item from the dropdown
@@ -158,7 +167,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     if (selectedItem) {
       form.setValue(`items.${index}.description`, selectedItem.name);
       form.setValue(`items.${index}.price`, selectedItem.price);
-      form.setValue(`items.${index}.itemId`, selectedItem.id);
+      form.setValue(`items.${index}.item_id`, selectedItem.id);
       
       // Recalculate the line total
       const quantity = form.getValues(`items.${index}.quantity`);
@@ -169,7 +178,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   // Add a new empty item line
   const addItem = () => {
     append({
-      itemId: null,
+      item_id: null,
       description: "",
       quantity: 1,
       price: 0,
@@ -185,7 +194,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="space-y-4">
             <FormField
               control={form.control}
-              name="invoice.invoiceNumber"
+              name="invoice.invoice_number"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Invoice Number</FormLabel>
@@ -199,7 +208,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
             <FormField
               control={form.control}
-              name="invoice.clientId"
+              name="invoice.client_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Client</FormLabel>
@@ -258,7 +267,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="space-y-4">
             <FormField
               control={form.control}
-              name="invoice.issueDate"
+              name="invoice.issue_date"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Issue Date</FormLabel>
@@ -297,7 +306,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
             <FormField
               control={form.control}
-              name="invoice.dueDate"
+              name="invoice.due_date"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Due Date</FormLabel>
@@ -336,7 +345,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
             <FormField
               control={form.control}
-              name="invoice.isRecurring"
+              name="invoice.is_recurring"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Recurring Invoice</FormLabel>
@@ -377,7 +386,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <div key={field.id} className="grid grid-cols-12 gap-2 mb-3">
                 <div className="col-span-5 space-y-2">
                   <Select
-                    value={form.getValues(`items.${index}.itemId`)?.toString() || ""}
+                    value={form.getValues(`items.${index}.item_id`)?.toString() || ""}
                     onValueChange={(value) => handleItemSelect(Number(value), index)}
                   >
                     <SelectTrigger>

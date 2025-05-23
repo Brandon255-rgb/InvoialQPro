@@ -65,7 +65,7 @@ export const items = pgTable('items', {
 // Invoices table
 export const invoices = pgTable('invoices', {
   id: uuid('id').primaryKey().defaultRandom(),
-  client_id: integer('client_id').references(() => clients.id, { onDelete: 'cascade' }),
+  client_id: uuid('client_id').references(() => clients.id, { onDelete: 'cascade' }),
   invoice_number: varchar('invoice_number', { length: 50 }).notNull(),
   status: varchar('status', { length: 50 }).default('draft'),
   issue_date: date('issue_date').notNull(),
@@ -81,9 +81,9 @@ export const invoices = pgTable('invoices', {
 
 // Invoice Items table
 export const invoiceItems = pgTable('invoice_items', {
-  id: integer('id').primaryKey().notNull(),
-  invoice_id: integer('invoice_id').references(() => invoices.id, { onDelete: 'cascade' }),
-  item_id: integer('item_id').references(() => items.id, { onDelete: 'set null' }),
+  id: uuid('id').primaryKey().defaultRandom(),
+  invoice_id: uuid('invoice_id').references(() => invoices.id, { onDelete: 'cascade' }),
+  item_id: uuid('item_id').references(() => items.id, { onDelete: 'set null' }),
   description: text('description').notNull(),
   quantity: integer('quantity').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
@@ -219,9 +219,28 @@ export const invoicesRelations = relations(invoices, ({ one, many }) => ({
     fields: [invoices.client_id],
     references: [clients.id],
   }),
+  user: one(users, {
+    fields: [invoices.user_id],
+    references: [users.id],
+  }),
   items: many(invoiceItems),
   reminders: many(reminders),
   tags: many(invoiceTags),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceItems.invoice_id],
+    references: [invoices.id],
+  }),
+  item: one(items, {
+    fields: [invoiceItems.item_id],
+    references: [items.id],
+  }),
+  user: one(users, {
+    fields: [invoiceItems.user_id],
+    references: [users.id],
+  }),
 }));
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -230,4 +249,116 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
     references: [users.id],
   }),
   invoices: many(invoices),
-})); 
+}));
+
+// RLS Policies
+export const rlsPolicies = `
+-- Users table policies
+CREATE POLICY "Users can view their own data" ON users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own data" ON users
+  FOR UPDATE USING (auth.uid() = id);
+
+-- User Settings table policies
+CREATE POLICY "Users can view their own settings" ON user_settings
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own settings" ON user_settings
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own settings" ON user_settings
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Clients table policies
+CREATE POLICY "Users can view their own clients" ON clients
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own clients" ON clients
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own clients" ON clients
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own clients" ON clients
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Items table policies
+CREATE POLICY "Users can view their own items" ON items
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own items" ON items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own items" ON items
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own items" ON items
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Invoices table policies
+CREATE POLICY "Users can view their own invoices" ON invoices
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own invoices" ON invoices
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own invoices" ON invoices
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own invoices" ON invoices
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Invoice Items table policies
+CREATE POLICY "Users can view their own invoice items" ON invoice_items
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own invoice items" ON invoice_items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own invoice items" ON invoice_items
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own invoice items" ON invoice_items
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Company Settings table policies
+CREATE POLICY "Users can view their own company settings" ON company_settings
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own company settings" ON company_settings
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own company settings" ON company_settings
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Team Members table policies
+CREATE POLICY "Users can view their own team members" ON team_members
+  FOR SELECT USING (auth.uid() = user_id OR auth.uid() = invited_by);
+
+CREATE POLICY "Users can insert team members" ON team_members
+  FOR INSERT WITH CHECK (auth.uid() = invited_by);
+
+CREATE POLICY "Users can update their own team members" ON team_members
+  FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = invited_by);
+
+CREATE POLICY "Users can delete their own team members" ON team_members
+  FOR DELETE USING (auth.uid() = user_id OR auth.uid() = invited_by);
+
+-- Activity Feed table policies
+CREATE POLICY "Users can view their own activity feed" ON activity_feed
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own activity feed entries" ON activity_feed
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Subscriptions table policies
+CREATE POLICY "Users can view their own subscriptions" ON subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own subscriptions" ON subscriptions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own subscriptions" ON subscriptions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+`; 
