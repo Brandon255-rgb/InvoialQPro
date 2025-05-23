@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from './queryClient';
 
 // Types
 export interface SubscriptionPlan {
@@ -86,12 +87,11 @@ export class PaymentService {
   // Subscription Management
   async createSubscription(priceId: string, paymentMethodId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('create-subscription', {
-        body: { priceId, paymentMethodId },
+      const response = await apiRequest('POST', '/api/subscriptions', {
+        priceId,
+        paymentMethodId,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error creating subscription:', error);
       this.showToast(
@@ -105,12 +105,8 @@ export class PaymentService {
 
   async cancelSubscription(subscriptionId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
-        body: { subscriptionId },
-      });
-
-      if (error) throw error;
-      return data;
+      const response = await apiRequest('DELETE', `/api/subscriptions/${subscriptionId}`);
+      return await response.json();
     } catch (error) {
       console.error('Error canceling subscription:', error);
       this.showToast(
@@ -124,12 +120,10 @@ export class PaymentService {
 
   async updatePaymentMethod(paymentMethodId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('update-payment-method', {
-        body: { paymentMethodId },
+      const response = await apiRequest('PUT', '/api/payment-methods/default', {
+        paymentMethodId,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error updating payment method:', error);
       this.showToast(
@@ -144,12 +138,10 @@ export class PaymentService {
   // Invoice Payments
   async createPaymentIntent(invoiceId: string, amount: number) {
     try {
-      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: { invoiceId, amount },
+      const response = await apiRequest('POST', `/api/invoices/${invoiceId}/payment-intent`, {
+        amount,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error creating payment intent:', error);
       this.showToast(
@@ -163,12 +155,10 @@ export class PaymentService {
 
   async handleInvoicePayment(invoiceId: string, paymentMethodId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('handle-invoice-payment', {
-        body: { invoiceId, paymentMethodId },
+      const response = await apiRequest('POST', `/api/invoices/${invoiceId}/pay`, {
+        paymentMethodId,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error handling invoice payment:', error);
       this.showToast(
@@ -183,9 +173,8 @@ export class PaymentService {
   // Payment Methods
   async getPaymentMethods(): Promise<PaymentMethod[]> {
     try {
-      const { data, error } = await supabase.functions.invoke('get-payment-methods');
-      if (error) throw error;
-      return data;
+      const response = await apiRequest('GET', '/api/payment-methods');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       throw error;
@@ -194,12 +183,10 @@ export class PaymentService {
 
   async addPaymentMethod(paymentMethodId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('add-payment-method', {
-        body: { paymentMethodId },
+      const response = await apiRequest('POST', '/api/payment-methods', {
+        paymentMethodId,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error adding payment method:', error);
       this.showToast(
@@ -214,9 +201,8 @@ export class PaymentService {
   // Billing History
   async getBillingHistory(): Promise<BillingHistory[]> {
     try {
-      const { data, error } = await supabase.functions.invoke('get-billing-history');
-      if (error) throw error;
-      return data;
+      const response = await apiRequest('GET', '/api/billing/history');
+      return await response.json();
     } catch (error) {
       console.error('Error fetching billing history:', error);
       throw error;
@@ -230,12 +216,10 @@ export class PaymentService {
     endDate?: Date;
   }) {
     try {
-      const { data, error } = await supabase.functions.invoke('setup-recurring-invoice', {
-        body: { invoiceId, schedule },
+      const response = await apiRequest('POST', `/api/invoices/${invoiceId}/recurring`, {
+        schedule,
       });
-
-      if (error) throw error;
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error setting up recurring invoice:', error);
       this.showToast(
@@ -249,12 +233,8 @@ export class PaymentService {
 
   async cancelRecurringInvoice(invoiceId: string) {
     try {
-      const { data, error } = await supabase.functions.invoke('cancel-recurring-invoice', {
-        body: { invoiceId },
-      });
-
-      if (error) throw error;
-      return data;
+      const response = await apiRequest('DELETE', `/api/invoices/${invoiceId}/recurring`);
+      return await response.json();
     } catch (error) {
       console.error('Error canceling recurring invoice:', error);
       this.showToast(

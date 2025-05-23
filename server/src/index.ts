@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { registerRoutes } from './routes';
+import router from './routes';
 import { startRecurringInvoiceCron } from './cron/recurring';
 import helmet from 'helmet';
 
@@ -30,14 +30,17 @@ async function createServer() {
   app.use(cors());
   app.use(express.json());
 
-  // Register all routes and get the server
-  const server = await registerRoutes(app);
+  // Mount the router
+  app.use('/api', router);
 
-  // Use port 5001 explicitly
-  const port = 5001;
-  server.listen(port, () => {
+  // Use port 5000 explicitly
+  const port = 5000;
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
     startRecurringInvoiceCron();
   });
+
+  return server;
 }
 
 createServer().catch((e) => {

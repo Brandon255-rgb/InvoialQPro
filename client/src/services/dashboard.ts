@@ -23,7 +23,7 @@ export interface DashboardStats {
 
 export const fetchDashboardData = async (): Promise<DashboardStats> => {
   try {
-    const response = await axios.get<DashboardStats>('/api/dashboard');
+    const response = await axios.get<DashboardStats>('/api/analytics/dashboard');
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

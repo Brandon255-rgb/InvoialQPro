@@ -20,6 +20,7 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
+import React from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
@@ -60,8 +61,8 @@ export default function Sidebar() {
         {navigation.map((item, idx) => {
           const isActive = location === item.href || location.startsWith(`${item.href}/`);
           return (
-            <>
-              <ListItem key={item.name} disablePadding>
+            <React.Fragment key={item.name}>
+              <ListItem disablePadding>
                 <ListItemButton
                   selected={isActive}
                   onClick={() => setLocation(item.href)}
@@ -127,7 +128,7 @@ export default function Sidebar() {
                   })()}
                 </Box>
               )}
-            </>
+            </React.Fragment>
           );
         })}
       </List>

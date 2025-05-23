@@ -1,9 +1,24 @@
-import { Express } from 'express';
-import { createServer, type Server } from 'http';
+import { Router } from 'express';
+import authRoutes from './auth';
+import clientRoutes from './clients';
+import invoiceRoutes from './invoices';
+import itemRoutes from './items';
+import subscriptionRoutes from './subscriptions';
+import teamRoutes from './team';
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Create HTTP server
-  const server = createServer(app);
-  
-  return server;
-} 
+const router = Router();
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Mount all route modules
+router.use('/auth', authRoutes);
+router.use('/clients', clientRoutes);
+router.use('/invoices', invoiceRoutes);
+router.use('/items', itemRoutes);
+router.use('/subscriptions', subscriptionRoutes);
+router.use('/team', teamRoutes);
+
+export default router; 

@@ -8,42 +8,17 @@ import { sendInvoiceEmail } from "./services/email";
 import bcrypt from "bcrypt";
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import paymentRouter from './src/routes/payment';
 import { upload, saveFileMetadata, getFileMetadata, deleteFile } from './src/services/upload';
 import { companySettings, attachments } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
-import { inviteTeamMember, acceptTeamInvite, getTeamMembers, updateTeamMemberRole, removeTeamMember } from './src/services/team';
+import { createTeamInvitation, acceptTeamInvitation, getTeamMembers, updateTeamMemberRole, removeTeamMember } from './src/services/team';
 import { auditLogs, invoiceTemplates } from '@shared/schema';
-import { db } from './src/db';
+import { db } from './src/lib/db';
+import { auth as authMiddleware, requireRole } from './src/middleware/auth';
 
 // Constants
 const SALT_ROUNDS = 12; // Industry standard for bcrypt
 const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-
-// Authentication middleware
-const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // For now, we'll rely on userId coming from query or body parameters
-    // In production, this would use a proper JWT or session-based auth system
-    const userId = req.query.userId || req.body.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    
-    const user = await storage.getUser(userId);
-    
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-    
-    // Attach user to request for use in route handlers
-    (req as any).user = user;
-    next();
-  } catch (error) {
-    res.status(500).json({ message: "Authentication error" });
-  }
-};
 
 // Helper function to parse params
 const getIdParam = (req: Request): string => {
@@ -203,16 +178,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add this after the authentication middleware
-  app.get("/api/auth/verify", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/auth/verify", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Don't return the password in the response
-      const { password, ...userWithoutPassword } = user;
-      res.status(200).json(userWithoutPassword);
+      res.status(200).json(user);
     } catch (error) {
       console.error("Session verification error:", error);
       res.status(500).json({ message: "Failed to verify session" });
@@ -220,9 +193,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client routes
-  app.get("/api/clients", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/clients", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const clients = await storage.getClientsByUserId(user.id);
       res.status(200).json(clients);
     } catch (error) {
@@ -231,11 +207,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/clients/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
       const client = await storage.getClient(id);
-      const user = (req as any).user;
+      const user = req.user;
       
       if (!client) {
         return res.status(404).json({ message: "Client not found" });
@@ -253,9 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clients", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/clients", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const clientData = insertClientSchema.parse({
         ...req.body,
         userId: user.id // Ensure client is created under the authenticated user
@@ -275,10 +251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/clients/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const client = await storage.getClient(id);
       
       if (!client) {
@@ -302,10 +278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/clients/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.delete("/api/clients/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const client = await storage.getClient(id);
       
       if (!client) {
@@ -335,9 +311,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Item routes
-  app.get("/api/items", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/items", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const items = await storage.getItemsByUserId(user.id);
       res.status(200).json(items);
     } catch (error) {
@@ -346,11 +322,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/items/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
       const item = await storage.getItem(id);
-      const user = (req as any).user;
+      const user = req.user;
       
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
@@ -368,9 +344,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/items", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/items", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const itemData = insertItemSchema.parse({
         ...req.body,
         userId: user.id // Ensure item is created under the authenticated user
@@ -390,10 +366,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/items/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const item = await storage.getItem(id);
       
       if (!item) {
@@ -417,10 +393,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/items/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.delete("/api/items/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const item = await storage.getItem(id);
       
       if (!item) {
@@ -453,9 +429,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoice routes
-  app.get("/api/invoices", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/invoices", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const invoices = await storage.getInvoicesByUserId(user.id);
       
       res.status(200).json(invoices);
@@ -465,10 +441,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/invoices/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const invoice = await storage.getInvoice(id);
       
       if (!invoice) {
@@ -493,9 +469,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/invoices", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/invoices", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const { invoice, items } = req.body;
       
       // For security, enforce that the user ID in the invoice matches the authenticated user
@@ -557,10 +533,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/invoices/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const { invoice, items } = req.body;
       
       // Get the existing invoice
@@ -640,10 +616,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/invoices/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.delete("/api/invoices/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       
       // Get the invoice before deletion to verify ownership
       const invoice = await storage.getInvoice(id);
@@ -675,10 +651,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate PDF
-  app.get("/api/invoices/:id/pdf", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/invoices/:id/pdf", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const invoice = await storage.getInvoice(id);
       
       if (!invoice) {
@@ -739,10 +715,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send invoice via email
-  app.post("/api/invoices/:id/send", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/invoices/:id/send", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const { recipientEmail } = req.body;
       
       if (!recipientEmail) {
@@ -813,9 +789,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reminder routes
-  app.get("/api/reminders", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/reminders", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       // Instead of accepting any userId, we use the authenticated user's ID
       // This prevents unauthorized access to another user's reminders
       const userId = user.id;
@@ -828,9 +804,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/reminders", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/reminders", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       
       // Enforce that the userId in the reminder matches the authenticated user
       const reminderData = insertReminderSchema.parse({
@@ -866,10 +842,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/reminders/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/reminders/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       
       // Get existing reminder to check ownership
       const existingReminder = await storage.getReminder(id);
@@ -910,7 +886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/reminders/:id", async (req: Request, res: Response) => {
+  app.delete("/api/reminders/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
       const success = await storage.deleteReminder(id);
@@ -926,12 +902,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics routes
-  app.get("/api/analytics/dashboard", async (req: Request, res: Response) => {
+  app.get("/api/analytics/dashboard", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const userId = req.query.userId;
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Valid userId is required" });
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
+      const userId = user.id;
       
       // Get basic stats
       const totalRevenue = await storage.getTotalRevenue(userId);
@@ -992,17 +969,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recentInvoices
       });
     } catch (error) {
+      console.error("Dashboard error:", error);
       res.status(500).json({ message: "Failed to fetch analytics data" });
     }
   });
 
-  // Payment routes
-  app.use('/api/payments', paymentRouter);
-
   // File upload routes
-  app.post("/api/upload", authenticateUser, upload.single('file'), async (req: Request, res: Response) => {
+  app.post("/api/upload", authMiddleware, upload.single('file'), async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const file = req.file;
       
       if (!file) {
@@ -1024,10 +999,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/files/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/files/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       
       const file = await getFileMetadata(id);
       if (!file) {
@@ -1046,10 +1021,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/files/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.delete("/api/files/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       
       const file = await getFileMetadata(id);
       if (!file) {
@@ -1070,9 +1045,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company settings routes
-  app.get("/api/company-settings", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/company-settings", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       
       const [settings] = await db.select().from(companySettings).where(eq(companySettings.userId, user.id));
       
@@ -1087,9 +1062,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/company-settings", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/company-settings", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const updates = req.body;
       
       // Prevent changing userId
@@ -1121,16 +1096,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team management routes
-  app.post("/api/team/invite", authenticateUser, async (req: Request, res: Response) => {
+  app.post("/api/team/invite", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { email, role } = req.body;
       
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+      if (!email || !role) {
+        return res.status(400).json({ message: "Email and role are required" });
       }
       
-      const member = await inviteTeamMember(user.id, email, role);
+      const member = await createTeamInvitation(user.id, email, role);
       res.status(201).json(member);
     } catch (error) {
       console.error("Error inviting team member:", error);
@@ -1141,18 +1119,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/team/accept/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
+      const { userId } = req.body;
       
-      const member = await acceptTeamInvite(token);
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      
+      const member = await acceptTeamInvitation(token, userId);
       res.status(200).json(member);
     } catch (error) {
-      console.error("Error accepting invite:", error);
-      res.status(500).json({ message: "Failed to accept invite" });
+      console.error("Error accepting team invitation:", error);
+      res.status(500).json({ message: "Failed to accept team invitation" });
     }
   });
 
-  app.get("/api/team/members", authenticateUser, async (req: Request, res: Response) => {
+  app.get("/api/team/members", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const members = await db.select().from(teamMembers).where(eq(teamMembers.userId, user.id));
       res.status(200).json(members);
     } catch (error) {
@@ -1161,10 +1144,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/team/members/:id/role", authenticateUser, async (req: Request, res: Response) => {
+  app.put("/api/team/members/:id/role", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       const { role } = req.body;
       
       // Only admins can change roles
@@ -1180,10 +1163,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/team/members/:id", authenticateUser, async (req: Request, res: Response) => {
+  app.delete("/api/team/members/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const id = getIdParam(req);
-      const user = (req as any).user;
+      const user = req.user;
       
       // Only admins can remove team members
       if (user.role !== 'admin') {
@@ -1202,9 +1185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(auditLog);
 
   // --- Attachments Linking ---
-  app.post('/api/attachments/link', authenticateUser, async (req: Request, res: Response) => {
+  app.post('/api/attachments/link', authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const { attachmentId, invoiceId, clientId, reminderId } = req.body;
       if (!attachmentId) return res.status(400).json({ message: 'attachmentId required' });
       // Update attachment with entity linkage
@@ -1219,7 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/attachments/by-entity', authenticateUser, async (req: Request, res: Response) => {
+  app.get('/api/attachments/by-entity', authMiddleware, async (req: Request, res: Response) => {
     try {
       const { type, id } = req.query;
       if (!type || !id) return res.status(400).json({ message: 'type and id required' });
@@ -1236,9 +1219,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- Invoice Templates ---
-  app.post('/api/invoice-template', authenticateUser, async (req: Request, res: Response) => {
+  app.post('/api/invoice-template', authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const { name, templatePath } = req.body;
       if (!name || !templatePath) return res.status(400).json({ message: 'name and templatePath required' });
       const [template] = await db.insert(invoiceTemplates).values({
@@ -1253,9 +1236,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/invoice-template', authenticateUser, async (req: Request, res: Response) => {
+  app.get('/api/invoice-template', authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const templates = await db.select().from(invoiceTemplates).where(eq(invoiceTemplates.userId, user.id));
       res.status(200).json(templates);
     } catch (error) {
@@ -1264,9 +1247,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- Audit Logs (role-based access) ---
-  app.get('/api/audit-logs', authenticateUser, async (req: Request, res: Response) => {
+  app.get('/api/audit-logs', authMiddleware, async (req: Request, res: Response) => {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       let logs;
       if (user.role === 'super_admin') {
         logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));

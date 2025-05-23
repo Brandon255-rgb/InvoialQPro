@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, CreditCard, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
 
 export function SubscriptionManager() {
   const queryClient = useQueryClient();
@@ -18,8 +19,8 @@ export function SubscriptionManager() {
   const { data: subscription, isLoading: isLoadingSubscription } = useQuery({
     queryKey: ['subscription'],
     queryFn: async () => {
-      const { data } = await supabase.functions.invoke('get-subscription');
-      return data;
+      const response = await apiRequest('GET', '/api/subscriptions/current');
+      return response.json();
     },
   });
 

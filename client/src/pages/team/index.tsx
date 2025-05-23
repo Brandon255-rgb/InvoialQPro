@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Plus, Mail, UserPlus, Shield, MoreVertical, Trash2, Edit2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { apiRequest } from '@/lib/queryClient';
 
 const inviteSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -90,25 +91,15 @@ export default function Team() {
     try {
       setIsSubmitting(true);
 
-      // Send invitation email
-      const { error: inviteError } = await supabase.functions.invoke("send-team-invite", {
-        body: { email: data.email, role: data.role },
+      // Send invitation email and add to team_members table
+      const response = await apiRequest('POST', '/api/team/invite', {
+        email: data.email,
+        role: data.role,
       });
 
-      if (inviteError) throw inviteError;
-
-      // Add to team_members table with pending status
-      const { error: dbError } = await supabase
-        .from("team_members")
-        .insert({
-          email: data.email,
-          role: data.role,
-          status: "pending",
-          invited_by: user?.id,
-          invited_at: new Date().toISOString(),
-        });
-
-      if (dbError) throw dbError;
+      if (!response.ok) {
+        throw new Error('Failed to send invitation');
+      }
 
       toast({
         title: "Invitation sent",
