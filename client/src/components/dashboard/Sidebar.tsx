@@ -146,8 +146,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             </a>
           </Link>
 
-          {/* Small Subscription Info Box */}
-          <div className="mt-3 mb-2 mx-4 p-2 rounded-lg bg-accent-50 border border-accent-200 text-xs text-accent-800 flex flex-col items-start">
+          {/* Subscription Tier Plan Badge */}
+          <div className="mt-4 mx-4 mb-2 p-2 rounded-lg bg-accent-50 border border-accent-200 text-xs text-accent-800 flex flex-col items-start">
             <span className="font-semibold text-accent-700">Unlimited Pro</span>
             {/* For other plans, show days left: */}
             {/* <span className="text-[10px] text-accent-700 mt-1">12 days left</span> */}

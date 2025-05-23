@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { insertClientSchema } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Extend the schema with client validation rules
 const clientFormSchema = insertClientSchema.extend({
@@ -45,7 +45,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      userId: userId || 0,
+      user_id: userId || "",
       name: "",
       email: "",
       phone: "",
@@ -163,8 +163,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
           )}
         />
 
-        {/* Hidden field for userId */}
-        <input type="hidden" {...form.register("userId")} />
+        {/* Hidden field for user_id */}
+        <input type="hidden" {...form.register("user_id")} />
 
         {/* Submit Button */}
         <div className="flex justify-end">

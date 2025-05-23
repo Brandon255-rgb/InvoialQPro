@@ -45,7 +45,7 @@ const CreateClient = () => {
   const handleSubmit = (data: any) => {
     createMutation.mutate({
       ...data,
-      userId: userId,
+      user_id: userId,
     });
   };
 

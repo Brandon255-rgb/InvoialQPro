@@ -108,7 +108,7 @@ export default function Login() {
       // Show success message
       toast({
         title: "Login successful",
-        description: `Welcome back, ${profile.name || 'User'}!`,
+        description: `You are now logged in!`,
       });
 
       // Navigate to dashboard
@@ -127,8 +127,8 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to your account"
+      title="Sign in to your account"
+      subtitle="Enter your credentials to continue"
       type="login"
     >
       <Form {...form}>

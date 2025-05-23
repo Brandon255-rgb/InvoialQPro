@@ -39,13 +39,10 @@ export default function Header() {
 
   return (
     <AppBar position="static" color="default" elevation={1}>
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Welcome back, {user?.name}
-        </Typography>
-        {/* Global Invoice Search Bar */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 2 }}>
-          <Box sx={{ position: 'relative', width: 240 }}>
+      <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Centered Global Invoice Search Bar */}
+        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ position: 'relative', width: 360 }}>
             <SearchIcon sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'text.disabled' }} />
             <input
               type="text"
@@ -63,6 +60,7 @@ export default function Header() {
             />
           </Box>
         </Box>
+        {/* Profile/Avatar section at right */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton color="inherit">
             <NotificationsIcon />
