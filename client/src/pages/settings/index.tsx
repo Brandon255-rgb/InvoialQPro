@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ProfilePictureUpload } from "@/components/ProfilePictureUpload";
+import { toSnakeCase, toCamelCase } from '@/lib/caseUtils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -99,6 +100,34 @@ function setThemeClass(theme: 'light' | 'dark') {
   const html = document.documentElement;
   html.classList.remove('theme-light', 'theme-dark');
   html.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+}
+
+// Utility to convert camelCase to snake_case for user_settings
+function toSnakeCaseSettings(data: any) {
+  return {
+    ...data,
+    fontsize: data.fontSize ?? data.fontsize,
+    dateformat: data.dateFormat ?? data.dateformat,
+    twofactorauth: data.twoFactorAuth ?? data.twofactorauth,
+    sessiontimeout: data.sessionTimeout ?? data.sessiontimeout,
+    loginnotifications: data.loginNotifications ?? data.loginnotifications,
+    emailnotifications: data.emailNotifications ?? data.emailnotifications,
+    invoicereminders: data.invoiceReminders ?? data.invoicereminders,
+    paymentnotifications: data.paymentNotifications ?? data.paymentnotifications,
+    marketingemails: data.marketingEmails ?? data.marketingemails,
+    reminderfrequency: data.reminderFrequency ?? data.reminderfrequency,
+    // Remove camelCase keys
+    fontSize: undefined,
+    dateFormat: undefined,
+    twoFactorAuth: undefined,
+    sessionTimeout: undefined,
+    loginNotifications: undefined,
+    emailNotifications: undefined,
+    invoiceReminders: undefined,
+    paymentNotifications: undefined,
+    marketingEmails: undefined,
+    reminderFrequency: undefined,
+  };
 }
 
 const Settings = () => {
@@ -220,21 +249,20 @@ const Settings = () => {
     },
   });
 
-  // Notification settings mutation (mocked for now)
+  // Notification settings mutation
   const notificationMutation = useMutation({
     mutationFn: async (data: NotificationSettings) => {
       try {
         setIsSubmitting(true);
+        const snakeData = toSnakeCase(data);
         const { error } = await supabase
           .from("user_settings")
           .upsert({
             user_id: user?.id,
-            ...data,
+            ...snakeData,
             updated_at: new Date().toISOString(),
           });
-
         if (error) throw error;
-
         toast({
           title: "Settings updated",
           description: "Your notification preferences have been saved.",
@@ -259,9 +287,10 @@ const Settings = () => {
       try {
         const response = await apiRequest('GET', `/api/users/${user.id}/settings`);
         const data = await response.json();
-        if (data?.theme) {
-          setThemeClass(data.theme);
-          appearanceForm.setValue('theme', data.theme);
+        const camelData = toCamelCase(data);
+        if (camelData?.theme) {
+          setThemeClass(camelData.theme);
+          appearanceForm.setValue('theme', camelData.theme);
         } else {
           setThemeClass('light');
           appearanceForm.setValue('theme', 'light');
@@ -367,14 +396,12 @@ const Settings = () => {
     try {
       setIsSubmitting(true);
       setThemeClass(data.theme as 'light' | 'dark');
+      const snakeData = toSnakeCase(data);
       const { error } = await supabase
         .from('user_settings')
         .upsert({
           user_id: user?.id,
-          theme: data.theme,
-          fontSize: data.fontSize,
-          currency: data.currency,
-          dateFormat: data.dateFormat,
+          ...snakeData,
           updated_at: new Date().toISOString(),
         });
       if (error) throw error;
@@ -396,15 +423,14 @@ const Settings = () => {
   const onSecuritySubmit = async (data: SecuritySettings) => {
     try {
       setIsSubmitting(true);
+      const snakeData = toSnakeCase(data);
       const response = await apiRequest('PUT', `/api/users/${user?.id}/settings`, {
-        ...data,
+        ...snakeData,
         type: 'security'
       });
-
       if (!response.ok) {
         throw new Error('Failed to update security settings');
       }
-
       toast({
         title: "Settings updated",
         description: "Your security preferences have been saved.",

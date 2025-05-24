@@ -13,6 +13,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Utility to convert camelCase to snake_case for user_settings
+function toSnakeCaseSettings(data: any) {
+  if (!data) return data;
+  return {
+    ...data,
+    fontsize: data.fontSize ?? data.fontsize,
+    dateformat: data.dateFormat ?? data.dateformat,
+    twofactorauth: data.twoFactorAuth ?? data.twofactorauth,
+    sessiontimeout: data.sessionTimeout ?? data.sessiontimeout,
+    loginnotifications: data.loginNotifications ?? data.loginnotifications,
+    emailnotifications: data.emailNotifications ?? data.emailnotifications,
+    invoicereminders: data.invoiceReminders ?? data.invoicereminders,
+    paymentnotifications: data.paymentNotifications ?? data.paymentnotifications,
+    marketingemails: data.marketingEmails ?? data.marketingemails,
+    reminderfrequency: data.reminderFrequency ?? data.reminderfrequency,
+    // Remove camelCase keys
+    fontSize: undefined,
+    dateFormat: undefined,
+    twoFactorAuth: undefined,
+    sessionTimeout: undefined,
+    loginNotifications: undefined,
+    emailNotifications: undefined,
+    invoiceReminders: undefined,
+    paymentNotifications: undefined,
+    marketingEmails: undefined,
+    reminderFrequency: undefined,
+  };
+}
+
 // Get user profile
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -112,12 +141,11 @@ router.get('/:id/settings', auth, async (req, res) => {
     if (id !== req.user?.id) {
       return res.status(403).json({ error: 'Unauthorized to access these settings' });
     }
-
     const settings = await db.query.userSettings.findFirst({
       where: eq(userSettings.user_id, id),
     });
-
-    res.json(settings || {});
+    // Always return snake_case
+    res.json(toSnakeCaseSettings(settings) || {});
   } catch (error) {
     console.error('Error fetching user settings:', error);
     res.status(500).json({ error: 'Failed to fetch user settings' });
@@ -131,26 +159,26 @@ router.put('/:id/settings', auth, async (req, res) => {
     if (id !== req.user?.id) {
       return res.status(403).json({ error: 'Unauthorized to update these settings' });
     }
-
     const { type, ...settings } = req.body;
-
+    // Convert to snake_case before saving
+    const snakeSettings = toSnakeCaseSettings(settings);
     // Update or insert settings based on type
     const [updatedSettings] = await db.insert(userSettings)
       .values({
         user_id: id,
-        ...settings,
+        ...snakeSettings,
         updated_at: new Date(),
       })
       .onConflictDoUpdate({
         target: [userSettings.user_id],
         set: {
-          ...settings,
+          ...snakeSettings,
           updated_at: new Date(),
         },
       })
       .returning();
-
-    res.json(updatedSettings);
+    // Always return snake_case
+    res.json(toSnakeCaseSettings(updatedSettings));
   } catch (error) {
     console.error('Error updating user settings:', error);
     res.status(500).json({ error: 'Failed to update user settings' });
