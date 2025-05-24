@@ -21,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Avatar from "@/components/ui/Avatar";
 import { Loader2, Plus, Mail, UserPlus, Shield, MoreVertical, Trash2, Edit2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from '@/lib/queryClient';
@@ -299,17 +299,7 @@ export default function Team() {
                     <TableRow key={member.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarImage src={member.avatar_url} />
-                            <AvatarFallback>
-                              {member.name
-                                ? member.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                : member.email[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <Avatar name={member.name || member.email} imageUrl={member.avatar_url} size="sm" />
                           <div>
                             <div className="font-medium">{member.name || "Pending"}</div>
                             <div className="text-sm text-gray-500">{member.email}</div>

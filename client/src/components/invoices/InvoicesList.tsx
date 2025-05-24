@@ -20,7 +20,7 @@ import {
   Copy, 
   Trash2 
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import Avatar from "@/components/ui/Avatar";
 
 interface InvoiceClient {
   id: number;
@@ -158,16 +158,7 @@ const InvoicesList: React.FC<InvoicesListProps> = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <Avatar>
-                        <AvatarFallback>
-                          {invoice.client.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Avatar name={invoice.client.name} size="sm" />
                       <div className="ml-2">
                         <div className="font-medium">{invoice.client.name}</div>
                         {invoice.client.company && (

@@ -18,7 +18,7 @@ import {
   Trash2, 
   Edit
 } from "lucide-react";
-import { Avatar } from "../ui/avatar";
+import Avatar from "../ui/Avatar";
 
 interface Client {
   id: number;
