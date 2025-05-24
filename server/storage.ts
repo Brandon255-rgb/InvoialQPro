@@ -84,7 +84,8 @@ export class MemStorage implements IStorage {
   private async setupSampleData(userId: string) {
     // Create some clients
     const client1 = await this.createClient({
-      userId,
+      id: 1,
+      userId: userId,
       name: 'Acme Corporation',
       email: 'contact@acme.com',
       phone: '+1 (555) 123-4567',
@@ -94,7 +95,8 @@ export class MemStorage implements IStorage {
     });
 
     const client2 = await this.createClient({
-      userId,
+      id: 2,
+      userId: userId,
       name: 'Global Solutions',
       email: 'info@globalsolutions.com',
       phone: '+1 (555) 987-6543',
@@ -104,7 +106,8 @@ export class MemStorage implements IStorage {
     });
 
     const client3 = await this.createClient({
-      userId,
+      id: 3,
+      userId: userId,
       name: 'TechCorp Inc.',
       email: 'support@techcorp.com',
       phone: '+1 (555) 789-0123',
@@ -115,7 +118,8 @@ export class MemStorage implements IStorage {
 
     // Create some items
     await this.createItem({
-      userId,
+      id: 1,
+      userId: userId,
       name: 'Web Design',
       description: 'Professional web design services',
       price: 1500,
@@ -124,7 +128,8 @@ export class MemStorage implements IStorage {
     });
 
     await this.createItem({
-      userId,
+      id: 2,
+      userId: userId,
       name: 'App Development',
       description: 'Mobile application development',
       price: 3000,
@@ -133,7 +138,8 @@ export class MemStorage implements IStorage {
     });
 
     await this.createItem({
-      userId,
+      id: 3,
+      userId: userId,
       name: 'SEO Package',
       description: 'Search engine optimization services',
       price: 800,
@@ -142,7 +148,8 @@ export class MemStorage implements IStorage {
     });
 
     await this.createItem({
-      userId,
+      id: 4,
+      userId: userId,
       name: 'Server Hardware',
       description: 'Dell PowerEdge R740 Server',
       price: 2500,
@@ -279,11 +286,8 @@ export class MemStorage implements IStorage {
   }
 
   private validateUser(user: InsertUser): void {
-    if (!user.email || !user.password || !user.name) {
+    if (!user.email || !user.name) {
       throw new Error("Missing required user fields");
-    }
-    if (user.password.length < 8) {
-      throw new Error("Password must be at least 8 characters long");
     }
   }
 
@@ -339,13 +343,8 @@ export class MemStorage implements IStorage {
       const newUser: User = {
         id: user.id,
         email: user.email,
-        password: user.password,
         name: user.name,
         role: user.role || 'user',
-        status: user.status || 'active',
-        company: user.company || null,
-        phone: user.phone || null,
-        address: user.address || null,
         createdAt: new Date(),
       };
       
@@ -481,7 +480,7 @@ export class MemStorage implements IStorage {
       
       const newInvoice: Invoice = {
         id: invoice.id,
-        userId: invoice.userId,
+        userId,
         clientId: invoice.clientId,
         invoiceNumber: invoice.invoiceNumber,
         status: invoice.status || 'draft',
@@ -590,7 +589,7 @@ export class MemStorage implements IStorage {
     try {
       const newReminder: Reminder = {
         id: reminder.id,
-        userId: reminder.userId,
+        userId,
         invoiceId: reminder.invoiceId || null,
         title: reminder.title,
         description: reminder.description || null,

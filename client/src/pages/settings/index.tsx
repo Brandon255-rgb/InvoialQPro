@@ -137,7 +137,7 @@ const Settings = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
   const [profilePicture, setProfilePicture] = useState<string | null>(user?.user_metadata?.avatar_url || null);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   
   // Forms setup
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
@@ -353,22 +353,44 @@ const Settings = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
       }
 
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated.",
+      const result = await response.json();
+      
+      // Show warning if Supabase update failed but database update succeeded
+      if (result.warning) {
+        toast({
+          title: "Profile Partially Updated",
+          description: result.warning,
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been successfully updated.",
+        });
+      }
+
+      setNotification({ 
+        message: result.warning ? "Profile partially updated" : "Profile has been updated", 
+        type: result.warning ? "warning" : "success" 
       });
-      setNotification({ message: "Profile has been updated", type: "success" });
+
+      // Refresh user data in context if needed
+      if (user?.id) {
+        await queryClient.invalidateQueries({ queryKey: ['user', user.id] });
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile. Please try again.";
       toast({
-        title: "Update failed",
-        description: "Failed to update profile. Please try again.",
+        title: "Update Failed",
+        description: errorMessage,
         variant: "destructive",
       });
-      setNotification({ message: "Failed to update profile. Please try again.", type: "error" });
+      setNotification({ message: errorMessage, type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -507,14 +529,27 @@ const Settings = () => {
           {/* Notification */}
           {notification && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className={`bg-black border-2 rounded-xl px-8 py-6 shadow-lg flex flex-col items-center gap-2 ${
-                notification.type === 'success' ? 'border-orange-500' : 'border-red-500'
-              }`}
-                style={{ minWidth: 300 }}
+              <div 
+                className={`bg-black border-2 rounded-xl px-8 py-6 shadow-lg flex flex-col items-center gap-2 ${
+                  notification.type === 'success' 
+                    ? 'border-orange-500' 
+                    : notification.type === 'warning' 
+                      ? 'border-yellow-500' 
+                      : 'border-red-500'
+                }`}
+                style={{ width: 'min(300px, 90vw)' }}
               >
-                <div className={`text-lg font-semibold ${
-                  notification.type === 'success' ? 'text-orange-500' : 'text-red-500'
-                }`}>{notification.message}</div>
+                <div 
+                  className={`text-lg font-semibold ${
+                    notification.type === 'success' 
+                      ? 'text-orange-500' 
+                      : notification.type === 'warning' 
+                        ? 'text-yellow-500' 
+                        : 'text-red-500'
+                  }`}
+                >
+                  {notification.message}
+                </div>
                 <button
                   className="absolute top-2 right-2 text-white hover:text-orange-500"
                   onClick={() => setNotification(null)}

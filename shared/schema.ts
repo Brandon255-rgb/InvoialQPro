@@ -13,7 +13,6 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'susp
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  password: text("password"),
   name: varchar("name", { length: 100 }).notNull(),
   role: roleEnum("role").notNull().default('user'),
   status: userStatusEnum("status").notNull().default('active'),
@@ -225,7 +224,6 @@ export type Database = {
         Row: {
           id: string;
           email: string;
-          password: string | null;
           name: string;
           role: 'super_admin' | 'admin' | 'user';
           status: 'active' | 'inactive' | 'suspended';
@@ -401,7 +399,6 @@ export type Database = {
 // Zod schemas for validation
 export const insertUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
   name: z.string().min(2),
   company: z.string().optional(),
   phone: z.string().optional(),

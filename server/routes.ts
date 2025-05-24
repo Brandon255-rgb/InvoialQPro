@@ -30,12 +30,10 @@ const router = Router();
 // Validation schemas
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
 });
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
 });
 
 // Mock database (replace with actual database in production)
@@ -99,13 +97,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email already in use" });
       }
       
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(userData.password, SALT_ROUNDS);
-      
       // Create user with hashed password
       const user = await storage.createUser({
         ...userData,
-        password: hashedPassword
       });
       
       // Don't return the password in the response
@@ -129,10 +123,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
+      const { email } = req.body;
       
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
       }
       
       // Find user by email
@@ -141,21 +135,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         // Use generic error message to prevent email enumeration
         return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      // Compare password with hashed password in database
-      const passwordMatch = await bcrypt.compare(password, user.password);
-      
-      if (!passwordMatch) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      // Check if user account is active
-      if (user.status !== 'active') {
-        return res.status(403).json({ 
-          message: "Account is not active", 
-          status: user.status 
-        });
       }
       
       // Don't return the password in the response

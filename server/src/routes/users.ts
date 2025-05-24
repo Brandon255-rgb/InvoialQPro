@@ -88,49 +88,74 @@ router.put('/:id', auth, async (req, res) => {
       avatar_url,
     } = req.body;
 
-    // Update user metadata in Supabase Auth
-    const { error: authError } = await supabase.auth.admin.updateUserById(id, {
-      email,
-      user_metadata: {
-        name,
-        company,
-        jobTitle,
-        phone,
-        mobilePhone,
-        website,
-        address,
-        bio,
-        dateOfBirth,
-        gender,
-        avatar_url,
-      },
-    });
+    console.log('Updating user profile:', { id, name, email, company });
 
-    if (authError) {
-      throw authError;
-    }
+    // First, update user in our database
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({
+          name,
+          email,
+          company,
+          phone,
+          job_title: jobTitle,
+          address: typeof address === 'object' ? JSON.stringify(address) : address,
+          bio,
+          date_of_birth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          gender,
+          profile_picture: avatar_url,
+          updated_at: new Date(),
+        })
+        .where(eq(users.id, id))
+        .returning();
 
-    // Update user in our database
-    const [updatedUser] = await db.update(users)
-      .set({
-        name,
+      if (!updatedUser) {
+        console.error('User not found in database:', id);
+        return res.status(404).json({ error: 'User not found in database' });
+      }
+
+      // Then update user metadata in Supabase Auth
+      const { error: authError } = await supabase.auth.admin.updateUserById(id, {
         email,
-        company,
-        phone,
-        address: typeof address === 'string' ? address : JSON.stringify(address),
-        updated_at: new Date(),
-      })
-      .where(eq(users.id, id))
-      .returning();
+        user_metadata: {
+          name,
+          company,
+          jobTitle,
+          phone,
+          mobilePhone,
+          website,
+          address,
+          bio,
+          dateOfBirth,
+          gender,
+          avatar_url,
+        },
+      });
 
-    if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
+      if (authError) {
+        console.error('Supabase auth update error:', authError);
+        // Even if Supabase update fails, we still return the database update
+        // but log the error for debugging
+        return res.status(200).json({
+          ...updatedUser,
+          warning: 'Profile updated in database but Supabase update failed',
+          authError: authError.message
+        });
+      }
+
+      res.json(updatedUser);
+    } catch (dbError) {
+      console.error('Database update error:', dbError);
+      throw dbError; // This will be caught by the outer try-catch
     }
-
-    res.json(updatedUser);
   } catch (error) {
     console.error('Error updating user profile:', error);
-    res.status(500).json({ error: 'Failed to update user profile' });
+    // Send more specific error message
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update user profile';
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error instanceof Error ? error.stack : undefined
+    });
   }
 });
 

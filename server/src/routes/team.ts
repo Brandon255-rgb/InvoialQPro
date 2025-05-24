@@ -109,11 +109,6 @@ router.post('/accept-invite', async (req, res) => {
       .set({ status: 'active' })
       .where(eq(teamMembers.id, member.id));
 
-    // Update user status
-    await db.update(users)
-      .set({ status: 'active' })
-      .where(eq(users.id, member.userId));
-
     res.json({ message: 'Team invitation accepted successfully' });
   } catch (error) {
     console.error('Error accepting team invitation:', error);

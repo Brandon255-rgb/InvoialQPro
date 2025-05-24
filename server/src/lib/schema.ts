@@ -9,7 +9,6 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'susp
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   email: text('email').notNull().unique(),
-  password: text('password'),
   name: text('name'),
   role: roleEnum('role').default('user'),
   status: userStatusEnum('status').default('active'),
